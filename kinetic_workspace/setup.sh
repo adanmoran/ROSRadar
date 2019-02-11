@@ -23,7 +23,7 @@ if [ x"$_ROSINSTALL_IN_RECURSION" != x"recurse" ] ; then
   export ROS_PACKAGE_PATH=
 fi
 
-export ROS_WORKSPACE=$(dirname "$0")
+export ROS_WORKSPACE=$(dirname $(readlink -f "$0"))
 if [ ! "$ROS_MASTER_URI" ] ; then export ROS_MASTER_URI=http://localhost:11311 ; fi
 unset ROS_ROOT
 
