@@ -7,7 +7,6 @@ This requires ROS Kinetic to be installed in `/opt/ros/kinetic/`.
 
 Assuming you downloaded this to your home folder, you should run the following commands
 
-1. `rosws set ~/ROSRadar/kinetic_workspace/sandbox`
-2. `source ~/ROSRadar/kinetic_workspace/setup.bash`
-3. `echo $ROS_PACKAGE_PATH`
-4. Confirm you get something like "/home/username/ROSRadar/kinetic_workspace/sandbox:/opt/ros/kinetic/share"
+1. `source ~/ROSRadar/kinetic_workspace/setup.bash`
+2. `echo $ROS_PACKAGE_PATH`
+3. Confirm you get something like "/home/username/ROSRadar/kinetic_workspace/sandbox:/opt/ros/kinetic/share"
