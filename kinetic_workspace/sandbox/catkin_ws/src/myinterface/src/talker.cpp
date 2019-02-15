@@ -139,7 +139,10 @@ int main(int argc, char **argv)
   ros::Rate loop_rate(10);
 
   std::vector<char> packets(1112);
-udp::endpoint endpoint(boost::asio::ip::udp::v4(), "192.168.1.2", 31122);
+  boost::asio::io_service io_service_;
+  udp::resolver res(io_service_);
+  udp::resolver::query query(udp::v4(), "192.168.1.2", "31122");
+  udp::endpoint endpoint = *res.resolve(query);
 
   // Generate a UDP server with boost::asio, asynchronously.
   while(ros::ok())
