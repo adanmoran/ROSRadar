@@ -61,7 +61,7 @@ int main(int argc, char **argv)
 
    // Try to generate a udp connection and print the output
 	AS::Network::UDPInterface udp;
-	std::string ip = "192.168.1.2";
+	std::string ip = "225.0.0.1";
 	int port = 31122;
 	ROS_INFO("Attempting connection to %s on port %d", ip.c_str(), port);
 
