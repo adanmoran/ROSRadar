@@ -65,26 +65,30 @@ int main(int argc, char **argv)
 	int port = 31122;
 	ROS_INFO("Attempting connection to %s on port %d", ip.c_str(), port);
 
-	as::return_statuses status;
-	while(ros::ok() &&
-			((status = udp.open(ip.c_str(),port)) != as::return_statuses::OK))
+	as::return_statuses status = as::return_statuses::BAD_PARAM;
+	while(ros::ok() && status != as::return_statuses::OK)
 	{
-		std::string status_msg = as::return_status_desc(status);
-		ROS_INFO("Failed to connect to UDP; %s", status_msg.c_str());
-		ros::spinOnce();
-		loop_rate.sleep();
+		status = udp.open(ip.c_str(), port);
+		switch(status)
+		{
+			case as::return_statuses::OK:
+				ROS_INFO("Connected to UDP.");
+				break;
+			default:
+				std::string status_msg = as::return_status_desc(status);
+				ROS_INFO("Failed to connect to UDP; %s", status_msg.c_str());
+				ros::spinOnce();
+				loop_rate.sleep();
+				break;
+		}
 	}
-	ROS_INFO("Connected to UDP.");
 
-	while(ros::ok())
-	{
-		const size_t buf_size = 1024;
-		unsigned char msg[buf_size];
-		size_t bytes_read = 0;
-		udp.read(msg, buf_size, bytes_read);
+	const size_t buf_size = 8768;
+	unsigned char msg[buf_size];
+	size_t bytes_read = 0;
+	udp.read(msg, buf_size, bytes_read);
 
-		ROS_INFO("Read %d bytes", bytes_read);
-	}
+	ROS_INFO("Read %d bytes", bytes_read);
 
 	udp.close();
 
