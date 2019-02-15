@@ -138,8 +138,8 @@ int main(int argc, char **argv)
 
   ros::Rate loop_rate(10);
 
-  std::vector<char> packets(8700);
-udp::endpoint endpoint(boost::asio::ip::address_v4::any(), 31122);
+  std::vector<char> packets(1112);
+udp::endpoint endpoint(boost::asio::udp::v4(), "192.168.1.2", 31122);
 
   // Generate a UDP server with boost::asio, asynchronously.
   while(ros::ok())
