@@ -76,6 +76,18 @@ int main(int argc, char **argv)
 	}
 	ROS_INFO("Connected to UDP.");
 
+	while(ros::ok())
+	{
+		const size_t buf_size = 1024;
+		unsigned char msg[buf_size];
+		size_t bytes_read = 0;
+		udp.read(msg, buf_size, bytes_read);
+
+		ROS_INFO("Read %d bytes", bytes_read);
+	}
+
+	udp.close();
+
 	// TODO: generate a UDP message with a header, size, and data[] through ROS 
 
   // For now, don't actually run the node, just do nothing
