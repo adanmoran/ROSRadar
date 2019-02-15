@@ -6,14 +6,93 @@
  */
 #include "ros/ros.h"
 #include "std_msgs/String.h"
-#include "network_interface/network_interface.h"
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
 
 #include <sstream>
 #include <string>
+#include <vector>
+#include <chrono>
+#include <thread>
 
-// Alias to make it easier to use UDP stuff
-namespace as = AS::Network;
+using boost::asio::ip::udp;
+using boost::asio::io_service;
 
+/*
+ * The boost asio library does not provide a blocking read with timeout function so we have to roll our own.
+ */
+int receive_from(
+    boost::asio::ip::udp::socket&         socket,
+    const boost::asio::mutable_buffers_1& buf,
+    boost::asio::ip::udp::endpoint&       remoteEndpoint,
+    boost::system::error_code&            error,
+    std::chrono::milliseconds                  timeout)
+{
+    volatile bool ioDone = false;
+    int numBytesReceived = 0;
+    boost::asio::io_service& ioService = socket.get_io_service();    
+
+    socket.async_receive_from(buf, remoteEndpoint,
+                              [&error, &ioDone, &numBytesReceived](const boost::system::error_code& errorAsync, size_t bytesReceived)
+                              {
+                                  ioDone = true;
+                                  error = errorAsync;
+                                  numBytesReceived = bytesReceived;
+                              });
+
+	 std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    ioService.reset();
+    ioService.poll_one();
+
+    auto endTime = std::chrono::system_clock::now() + timeout;
+
+    while (!ioDone)
+    {
+        ioService.reset();
+		  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        auto now = std::chrono::system_clock::now();
+        if (now > endTime)
+        {
+            socket.cancel();
+            error = boost::asio::error::timed_out;
+            return 0;
+        }
+        ioService.poll_one();
+    }
+    ioService.reset();
+
+    return numBytesReceived;
+}
+
+
+int WaitForPacket(
+		uint16_t portNum, 
+		std::vector<char>& udpBuf, 
+		udp::endpoint& remoteEndpoint, 
+		const std::chrono::milliseconds timeout)
+{
+		boost::asio::io_service ioService;
+
+		boost::asio::ip::udp::socket socket(ioService, 
+							  boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4::any(), portNum));
+    socket.set_option(boost::asio::socket_base::broadcast(true));
+
+    boost::system::error_code error;
+    int numBytes = receive_from(socket, 
+										  boost::asio::buffer(udpBuf), 
+										  remoteEndpoint, 
+										  error, 
+										  timeout);
+
+    if (error && error != boost::asio::error::message_size && 
+			 error != boost::asio::error::timed_out)
+    {
+        printf("Got error: %s\n", error.message().c_str());
+        return -1;
+    }
+
+    return numBytes;
+}
 /**
  * This tutorial demonstrates simple sending of messages over the ROS system.
  */
@@ -59,38 +138,15 @@ int main(int argc, char **argv)
 
   ros::Rate loop_rate(10);
 
-   // Try to generate a udp connection and print the output
-	AS::Network::UDPInterface udp;
-	std::string ip = "225.0.0.1";
-	int port = 31122;
-	ROS_INFO("Attempting connection to %s on port %d", ip.c_str(), port);
+  std::vector<char> packets(8700);
+udp::endpoint endpoint(boost::asio::ip::address_v4::any(), 31122);
 
-	as::return_statuses status = as::return_statuses::BAD_PARAM;
-	while(ros::ok() && status != as::return_statuses::OK)
-	{
-		status = udp.open(ip.c_str(), port);
-		switch(status)
-		{
-			case as::return_statuses::OK:
-				ROS_INFO("Connected to UDP.");
-				break;
-			default:
-				std::string status_msg = as::return_status_desc(status);
-				ROS_INFO("Failed to connect to UDP; %s", status_msg.c_str());
-				ros::spinOnce();
-				loop_rate.sleep();
-				break;
-		}
-	}
-
-	const size_t buf_size = 8768;
-	unsigned char msg[buf_size];
-	size_t bytes_read = 0;
-	udp.read(msg, buf_size, bytes_read);
-
-	ROS_INFO("Read %d bytes", bytes_read);
-
-	udp.close();
+  // Generate a UDP server with boost::asio, asynchronously.
+  while(ros::ok())
+  {
+	int numbytes = WaitForPacket(31122, packets, endpoint, std::chrono::milliseconds(1000));
+	ROS_INFO("Read %d packets", numbytes);
+  }
 
 	// TODO: generate a UDP message with a header, size, and data[] through ROS 
 
