@@ -1,0 +1,17 @@
+<package>
+  <description brief="rosudp">
+
+     rosudp
+
+  </description>
+  <author>Adan Moran-MacDonald</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/rosudp</url>
+  <depend package="std_msgs"/>
+  <depend package="rospy"/>
+  <depend package="roscpp"/>
+
+</package>
+
+
