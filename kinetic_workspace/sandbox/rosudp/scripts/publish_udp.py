@@ -4,8 +4,9 @@
 # Imports #
 ###########
 import rospy
-# TODO: replace this with our message type
+import roslib; roslib.load_manifest('rosudp')
 from std_msgs.msg import String
+from rosudp.msg import *
 
 import socket
 import struct
@@ -43,24 +44,34 @@ def init_udp_connection(hostIP, mcastPort, mcastGrp, isAllGroups = IS_ALL_GROUPS
 # TODO: pass in the port as a parameter or read it from rospy
 def publish_from(sock):
     # TODO: Change the publisher topic to contain the IP address or port
-    # TODO: Change the message type from String to our UDP message
     # TODO: Determine if a queue-size of 10 is correct, or if we need more
-    pub = rospy.Publisher('rosudp/' + str(MCAST_PORT), String, queue_size = 10)
+    pub = rospy.Publisher('rosudp/' + str(MCAST_PORT), UDPMsg, queue_size = 10)
     rospy.init_node('udpnode', anonymous = True)
     # TODO: Determine what the rate is of the device and take that as an input
-    rate = rospy.Rate(10) #Hz
+    rate = rospy.Rate(50) #Hz
 
     while not rospy.is_shutdown():
         try:
             # TODO: Make bufSize an input from ROS or make it suff. big
             data, addr = sock.recvfrom(BUF_SIZE)
+            # Generate the message from the buffer
+	    msg = UDPMsg()
+	    msg.timestamp = rospy.get_time()
+            msg.ip = str(addr)
+            msg.data = data
+            # Log stuff to the display
             rospy.loginfo("New Packet from " + str(addr))
             rospy.loginfo(data)
-            pub.publish(data)
+            # Publish our data
+            pub.publish(msg)
+        # Handle errors gracefully
         except socket.error as e:
             rospy.logerr(e)
         except Exception, err:
             rospy.logerr(err)
+
+        # Sleep so ROS can do other things and so this runs at given rate
+        rate.sleep()
 
     # Close the socket connection
     rospy.loginfo('Closing a connection to port ' + str(MCAST_PORT))
@@ -76,3 +87,4 @@ if __name__ == '__main__':
     except rospy.ROSInterruptException:
         pass
 
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
