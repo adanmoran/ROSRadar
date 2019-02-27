@@ -62,12 +62,11 @@ def publish_from(sock):
             rospy.loginfo(data)
             pub.publish(data)
         except socket.error, e:
-            rospy.logerr('Exception')
-            hexdata = binascii.hexlify(data)
-            rospy.logerr('Data = %s' % hexdata)
+            rospy.logerr('Exception: ' + e)
+            pass
 
     # Close the socket connection
-    socket.close(sock)
+    sock.close()
 
 # Main functionality
 if __name__ == '__main__':
