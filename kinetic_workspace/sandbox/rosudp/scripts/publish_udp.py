@@ -5,7 +5,7 @@
 ###########
 import rospy
 # TODO: replace this with our message type
-from std_msgs import String
+from std_msgs.msg import String
 
 import socket
 import struct
@@ -45,7 +45,7 @@ def publish():
     # TODO: Change the publisher topic to contain the IP address or port
     # TODO: Change the message type from String to our UDP message
     # TODO: Determine if a queue-size of 10 is correct, or if we need more
-    pub = rospy.Publisher('udpPublisher/' str(MCAST_PORT), String, queue_size = 10)
+    pub = rospy.Publisher('udpPublisher/' + str(MCAST_PORT), String, queue_size = 10)
     rospy.init_node('udpnode', anonymous = True)
     # TODO: Determine what the rate is of the device and take that as an input
     rate = rospy.Rate(10) #Hz
@@ -60,12 +60,9 @@ def publish():
         except socket.error, e:
             rospy.logerr('Exception')
             hexdata = binascii.hexlify(data)
-            rospy.logerr('Data = %s' % hexdata
+            rospy.logerr('Data = %s' % hexdata)
 
-    # Close the socket connection
-    socket.close(sock)
-
-
+    # TODO: Close the socket connection
 if __name__ == '__main__':
     InitializeUDP('192.168.1.30', 31122, '255.0.0.1', False)
     try:
