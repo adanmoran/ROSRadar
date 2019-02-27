@@ -16,15 +16,12 @@ MCAST_GRP = '225.0.0.1'
 # Multicast port on which to receive UDP messages
 MCAST_PORT = 31122
 # Listen to all multicast groups if true, otherwise listen only to MCAST_GRP
-IS_ALL_GROUPS = False
+IS_ALL_GROUPS = False;
 BUF_SIZE = 1154
 
 # Initialize a connection to the UDP object on the given port, which is
 # sent to the interface on this device with STATIC IP address given by hostIP.
-# If isAllGroups is True, the mcastGrp input is ignored. Otherwise,
-# listen on the mcastGrp channel.
-# By default, isAllGroups is False.
-def init_udp_connection(hostIP, mcastPort, mcastGrp = None, isAllGroups = IS_ALL_GROUPS):
+def init_udp_connection(hostIP, mcastPort, mcastGrp, isAllGroups = IS_ALL_GROUPS):
     # Connect to the socket with the given data
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -35,8 +32,6 @@ def init_udp_connection(hostIP, mcastPort, mcastGrp = None, isAllGroups = IS_ALL
         sock.bind(('', MCAST_PORT))
     else:
         # On this port, listen only to mcastGrp
-        print('host: ' + hostIP)
-        print('grp: ' + mcastGrp)
         sock.bind((mcastGrp, mcastPort))
 
     # Set the host information for the socket and listen to the right port
@@ -45,6 +40,7 @@ def init_udp_connection(hostIP, mcastPort, mcastGrp = None, isAllGroups = IS_ALL
     return sock
 
 # Given a connected socket, read data from UDP an dpublish to the topic
+# TODO: pass in the port as a parameter or read it from rospy
 def publish_from(sock):
     # TODO: Change the publisher topic to contain the IP address or port
     # TODO: Change the message type from String to our UDP message
@@ -61,18 +57,20 @@ def publish_from(sock):
             rospy.loginfo("New Packet from " + str(addr))
             rospy.loginfo(data)
             pub.publish(data)
-        except socket.error, e:
-            rospy.logerr('Exception: ' + e)
-            pass
+        except socket.error as e:
+            rospy.logerr(e)
+        except Exception, err:
+            rospy.logerr(err)
 
     # Close the socket connection
+    rospy.loginfo('Closing a connection to port ' + str(MCAST_PORT))
     sock.close()
 
 # Main functionality
 if __name__ == '__main__':
     # TODO: Initialize rospy node first so we can publish to the loginfo logerr
     # from InitializeUDP
-    sock = init_udp_connection('192.168.1.30', MCAST_PORT, MCAST_GRP, IS_ALL_GROUPS)
+    sock = init_udp_connection('192.168.1.30', MCAST_PORT, MCAST_GRP, True)
     try:
         publish_from(sock)
     except rospy.ROSInterruptException:
