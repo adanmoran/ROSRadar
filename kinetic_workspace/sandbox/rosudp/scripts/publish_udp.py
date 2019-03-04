@@ -10,6 +10,7 @@ from rosudp.msg import *
 
 import socket
 import struct
+import binascii
 
 # TODO: Set MCAST_GRP, MCAST_PORT, IP as inputs from ROS 
 # Multicast ip, which is emmitted by UDP device
@@ -18,7 +19,7 @@ MCAST_GRP = '225.0.0.1'
 MCAST_PORT = 31122
 # Listen to all multicast groups if true, otherwise listen only to MCAST_GRP
 IS_ALL_GROUPS = False;
-BUF_SIZE = 1154
+BUF_SIZE = 2048
 
 # Initialize a connection to the UDP object on the given port, which is
 # sent to the interface on this device with STATIC IP address given by hostIP.
@@ -60,8 +61,9 @@ def publish_from(sock):
             msg.ip = str(addr)
             msg.data = data
             # Log stuff to the display
-            rospy.loginfo("New Packet from " + str(addr))
-            rospy.loginfo(data)
+            rospy.loginfo("New Packet from " + str(addr) + " of size " + str(len(data)))
+            print(binascii.hexlify(data))
+            # rospy.loginfo(data)
             # Publish our data
             pub.publish(msg)
         # Handle errors gracefully
@@ -71,7 +73,7 @@ def publish_from(sock):
             rospy.logerr(err)
 
         # Sleep so ROS can do other things and so this runs at given rate
-        rate.sleep()
+#        rate.sleep()
 
     # Close the socket connection
     rospy.loginfo('Closing a connection to port ' + str(MCAST_PORT))
