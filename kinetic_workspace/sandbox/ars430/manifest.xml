@@ -1,0 +1,18 @@
+<package>
+  <description brief="ars430">
+
+     ars430
+
+  </description>
+  <author>Adan Moran-MacDonald</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/ars430</url>
+  <depend package="rosudp"/>
+  <depend package="rospy"/>
+  <depend package="roscpp"/>
+  <depend package="std_msgs"/>
+
+</package>
+
+
