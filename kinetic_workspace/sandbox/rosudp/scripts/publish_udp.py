@@ -12,6 +12,9 @@ import socket
 import struct
 import binascii
 
+# Print if desired
+DEBUG=False;
+
 # TODO: Set MCAST_GRP, MCAST_PORT, IP as inputs from ROS 
 # Multicast ip, which is emmitted by UDP device
 MCAST_GRP = '225.0.0.1'
@@ -58,11 +61,13 @@ def publish_from(sock):
             # Generate the message from the buffer
 	    msg = UDPMsg()
 	    msg.timestamp = rospy.get_time()
-            msg.ip = str(addr)
+            msg.ip = str(addr[0])
+            msg.port = addr[1]
             msg.data = data
             # Log stuff to the display
             rospy.loginfo("New Packet from " + str(addr) + " of size " + str(len(data)))
-            print(binascii.hexlify(data))
+            if DEBUG:
+                print(binascii.hexlify(data))
             # rospy.loginfo(data)
             # Publish our data
             pub.publish(msg)
