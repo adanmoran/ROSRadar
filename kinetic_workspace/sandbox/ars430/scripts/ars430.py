@@ -61,26 +61,21 @@ class ARS430Publisher:
 
     def __unpackEvent(self, eventData):
        
-	 data_length_in_bytes=32
-         #the data mentioned here is the data obtained using the sock.recvfrom in publisher_udp
+	data_length_in_bytes=32
+        #the data mentioned here is the data obtained using the sock.recvfrom in publisher_udp
 
-         eventData=data[:data_length_in_bytes]
+        eventOnlyData=eventData[:data_length_in_bytes]
 
-
-         #unpacking the data for Events using struct.unpack
-         (RDI_CRC,RDI_Len,RDI_SQC,RDI_MessageCounter,
+        #unpacking the data for Events using struct.unpack
+        (RDI_CRC,RDI_Len,RDI_SQC,RDI_MessageCounter,
          RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasurementCounter,
          RDI_CycleCounter,RDI_NofDetections,RDI_Vambig,
-	 RDI_CenterFrequency,RDI_DetectionsInPacket)
-	 =struct.unpack("!HHBBQLLLHHBB",eventData)
+	 RDI_CenterFrequency,RDI_DetectionsInPacket)	 
+        =struct.unpack("!HHBBQLLLHhBB",eventOnlyData)
 
-        return RDI_CRC,RDI_Len,RDI_SQC,RDI_MessageCounter,
-        RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasurementCounter,
-        RDI_CycleCounter,RDI_NofDetections,RDI_Vambig,RDI_CenterFrequency,RDI_DetectionsInPacket
-
-        
 	packet=ARSEvent()
-	packet.CRC=RDI_CRC
+	
+        packet.CRC=RDI_CRC
 	packet.Len=RDI_Len
 	packet.SQC=RDI_SQC
 	packet.MessageCounter=RDI_MessageCounter
@@ -93,15 +88,13 @@ class ARS430Publisher:
 	packet.CenterFreq=RDI_CenterFrequency
 	packet.DetInPack=RDI_DetectionsInPacket
 
-
-
 	#calling the class Radar Detection for the data starting from the 256th bit/32th byte position 
-        __unpackRadarDetections(self, packet, eventData[32:])
+        self.__unpackRadarDetections(self, packet, eventData[32:])
 
 	 # TODO: Unpack the event data, except for the radar detections
         # TODO: Find the radar detections list and send it to the function for unpacking
         # TODO: Return the ARS430EventMsg after unpacking. 
-        return String('TODO: Unpack the eventData into an ARS430EventMsg')
+        return packet('TODO: Unpack the eventData into an ARS430EventMsg')
 
     def __unpackRadarDetections(self, packet, list):
         # TODO: unpack the radar detections list into the otherwise already-full packet, using the list of bytes corresponding to the RadarDetections 
