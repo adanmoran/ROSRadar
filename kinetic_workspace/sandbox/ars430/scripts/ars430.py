@@ -48,10 +48,10 @@ class ARS430Publisher:
         self.statuses = rospy.Publisher(statusTopic, String, queue_size = 10)
         self.events = rospy.Publisher(eventTopic, String, queue_size = 10)
 
+    # Find the header in the UDPMsg.data object, and return
+    # a Headers enum corresponding to that header type
     def __findHeader(self, udpData):
-        # TODO: Find the header in the UDPMsg.data object, and return
-        # a Headers enum corresponding to that header type
-
+        
         # TODO: return the actual header, not just STATUS
         return ARS430Publisher.Headers.STATUS
 
@@ -72,7 +72,7 @@ class ARS430Publisher:
          RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasurementCounter,
          RDI_CycleCounter,RDI_NofDetections,RDI_Vambig,
 	 RDI_CenterFrequency,RDI_DetectionsInPacket)
-	 =struct.unpack("!HHBBQLLLHhBB",eventData)
+	 =struct.unpack("!HHBBQLLLHHBB",eventData)
 
         return RDI_CRC,RDI_Len,RDI_SQC,RDI_MessageCounter,
         RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasurementCounter,
