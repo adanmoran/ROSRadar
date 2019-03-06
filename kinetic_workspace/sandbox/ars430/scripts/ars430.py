@@ -97,25 +97,19 @@ class ARS430Publisher:
         # String('TODO Is Done!: Unpack the statusData into an ARS430StatusMsg'),
         return packet
 
-
-
-
-
-
     def __unpackEvent(self, eventData):
        
-	 data_length_in_bytes=32
-         #the data mentioned here is the data obtained using the sock.recvfrom in publisher_udp
+	data_length_in_bytes=32
+        #the data mentioned here is the data obtained using the sock.recvfrom in publisher_udp
 
-         dataEvent=data[:data_length_in_bytes]
+        eventData=data[:data_length_in_bytes]
 
-
-         #unpacking the data for Events using struct.unpack
-         (RDI_CRC,RDI_Len,RDI_SQC,RDI_MessageCounter,
-         RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasurementCounter,
-         RDI_CycleCounter,RDI_NofDetections,RDI_Vambig,
-	 RDI_CenterFrequency,RDI_DetectionsInPacket)
-	 =struct.unpack("!HHBBQLLLHhBB",dataEvent)
+        #unpacking the data for Events using struct.unpack
+        (RDI_CRC,RDI_Len,RDI_SQC,RDI_MessageCounter,
+        RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasurementCounter,
+        RDI_CycleCounter,RDI_NofDetections,RDI_Vambig,
+	RDI_CenterFrequency,RDI_DetectionsInPacket)
+	=struct.unpack("!HHBBQLLLHHBB",eventData)
 
         return RDI_CRC,RDI_Len,RDI_SQC,RDI_MessageCounter,
         RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasurementCounter,
@@ -137,11 +131,11 @@ class ARS430Publisher:
 	packet.DetInPack=RDI_DetectionsInPacket
 
 
+	#calling the class Radar Detection for the data starting from the 256th bit/32th byte position 
+        __unpackRadarDetections(self, packet, eventData[32:])
 
-#calling the class Radar Detection for the data starting from the 256th bit/32th byte position
-        RadarDet.unpack()
 
-	 # TODO: Unpack the event data, except for the radar detections
+	# TODO: Unpack the event data, except for the radar detections
         # TODO: Find the radar detections list and send it to the function for unpacking
         # TODO: Return the ARS430EventMsg after unpacking. 
         return String('TODO: Unpack the eventData into an ARS430EventMsg')
