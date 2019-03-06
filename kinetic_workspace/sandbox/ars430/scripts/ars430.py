@@ -47,10 +47,10 @@ class ARS430Publisher:
         self.statuses = rospy.Publisher(statusTopic, String, queue_size = 10)
         self.events = rospy.Publisher(eventTopic, String, queue_size = 10)
 
+    # Find the header in the UDPMsg.data object, and return
+    # a Headers enum corresponding to that header type
     def __findHeader(self, udpData):
-        # TODO: Find the header in the UDPMsg.data object, and return
-        # a Headers enum corresponding to that header type
-
+        
         # TODO: return the actual header, not just STATUS
         return ARS430Publisher.Headers.STATUS
 
