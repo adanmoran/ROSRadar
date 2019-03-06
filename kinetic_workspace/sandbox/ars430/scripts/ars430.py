@@ -51,6 +51,7 @@ class ARS430Publisher:
     # Find the header in the UDPMsg.data object, and return
     # a Headers enum corresponding to that header type
     def __findHeader(self, udpData):
+        udpData
         
         # TODO: return the actual header, not just STATUS
         return ARS430Publisher.Headers.STATUS
@@ -99,17 +100,18 @@ class ARS430Publisher:
 
     def __unpackEvent(self, eventData):
        
-	data_length_in_bytes=32
+        data_length_in_bytes=32
         #the data mentioned here is the data obtained using the sock.recvfrom in publisher_udp
 
+        # TODO: Fix this error since eventData is the input
         eventData=data[:data_length_in_bytes]
 
         #unpacking the data for Events using struct.unpack
         (RDI_CRC,RDI_Len,RDI_SQC,RDI_MessageCounter,
         RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasurementCounter,
         RDI_CycleCounter,RDI_NofDetections,RDI_Vambig,
-	RDI_CenterFrequency,RDI_DetectionsInPacket)
-	=struct.unpack("!HHBBQLLLHHBB",eventData)
+        RDI_CenterFrequency,RDI_DetectionsInPacket)
+        =struct.unpack("!HHBBQLLLHHBB",eventData)
 
         return RDI_CRC,RDI_Len,RDI_SQC,RDI_MessageCounter,
         RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasurementCounter,
@@ -177,8 +179,12 @@ arsPublisher = None
 def callback(data):
     # Declare that we are using the global arsPublisher object
     global arsPublisher
+
+    # Tell people we heard a UDP message!
     rospy.loginfo(rospy.get_caller_id() + "I heard a message from %s", str(data.ip))
 
+    # TODO: Only publish data if it comes from a desired IP address, which can be stored
+    # in the publisher itself
     packet, type = arsPublisher.unpackAndPublish(data.data)
 
     # TODO: Do stuff with the packet
@@ -188,6 +194,7 @@ def listener():
 
     # Initialize a publisher and make it available to the callback function
     global arsPublisher # modify the global variable
+
     arsPublisher = ARS430Publisher('ars430/statuses', 'ars430/events')
 
     # Listen for UDPMsg types and call the callback function
