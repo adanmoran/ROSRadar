@@ -4,9 +4,11 @@
 # Imports #
 ###########
 import rospy
-import roslib; roslib.load_manifest('rosudp')
+import roslib; roslib.load_manifest('ars430')
 from std_msgs.msg import String
 from rosudp.msg import UDPMsg
+from ars430.msg import ARS430Status
+from ars430.msg import RadarDetection
 
 import struct
 import enum
@@ -36,13 +38,16 @@ class ARS430Publisher:
         NEAR1  = auto()
         NEAR2  = auto()
 
+    # The ARS430 has a header length of 16 bytes
+    HEADER_LEN = 16
+
     # Constructor - initializes rospy Publishers for each of the topics
     def __init__(self, statusTopic, eventTopic):
         # TODO: Replace String with an ARS430 message type
         self.statuses = rospy.Publisher(statusTopic, String, queue_size = 10)
         self.events = rospy.Publisher(eventTopic, String, queue_size = 10)
 
-    def __findHeader(self, data):
+    def __findHeader(self, udpData):
         # TODO: Find the header in the UDPMsg.data object, and return
         # a Headers enum corresponding to that header type
 
@@ -68,7 +73,7 @@ class ARS430Publisher:
     def unpackAndPublish(self, udpData):
         headerType = self.__findHeader(udpData)
 
-        data = udpData[16:]
+        data = udpData[ARS430Publisher.HEADER_LEN:]
 
         # There is no switch-case in python :(
         if headerType == ARS430Publisher.Headers.STATUS:
