@@ -47,14 +47,16 @@ class ARS430Publisher:
     def unpackAndPublish(self, udpData):
         headerType = findHeader(udpData)
 
+        data = udpData[16:]
+
         # There is no switch-case in python :(
         if headerType == Headers.STATUS:
-            status = unpackStatus(udpData)
+            status = unpackStatus(data)
             # TODO: publish the ARS430Msg type
             self.statuses.publish(status)
             return (status, headerType)
         else:
-            event = unpackEvent(udpData)
+            event = unpackEvent(data)
             # TODO: publish the ARS430Msg type
             self.events.publish(event)
             return (event, headerType)
