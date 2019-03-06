@@ -1,0 +1,15 @@
+uint16 VrelRad
+uint16 A1Ang0
+uint16 AzAng1
+uint16 ElAng
+uint16 RCS0
+uint16 RCS1
+uint8 Prop0
+uint8 Prop1
+uint16 RangeVar
+uint16 VrelRadVar
+uint16 AzAngVar0
+uint16 AzAngVar1
+uint16 ElAngVar
+uint8 PDH0
+uint8 SNR

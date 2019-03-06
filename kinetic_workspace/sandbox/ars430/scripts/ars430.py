@@ -8,6 +8,8 @@ import roslib; roslib.load_manifest('ars430')
 from std_msgs.msg import String
 from rosudp.msg import UDPMsg
 from ars430.msg import ARS430Event
+from ars430.msg import ARS430Status
+from ars430.msg import RadarDetection
 
 import struct
 import enum
@@ -37,37 +39,21 @@ class ARS430Publisher:
         NEAR1  = auto()
         NEAR2  = auto()
 
+    # The ARS430 has a header length of 16 bytes
+    HEADER_LEN = 16
+
     # Constructor - initializes rospy Publishers for each of the topics
     def __init__(self, statusTopic, eventTopic):
         # TODO: Replace String with an ARS430 message type
         self.statuses = rospy.Publisher(statusTopic, String, queue_size = 10)
         self.events = rospy.Publisher(eventTopic, String, queue_size = 10)
 
-    # Unpack a UDPMsg into the ARS430Msg type, and returns that ARS430Msg as
-    # well as the type
-    def unpackAndPublish(self, udpData):
-        headerType = findHeader(udpData)
-
-        data = udpData[16:]
-
-        # There is no switch-case in python :(
-        if headerType == Headers.STATUS:
-            status = unpackStatus(data)
-            # TODO: publish the ARS430Msg type
-            self.statuses.publish(status)
-            return (status, headerType)
-        else:
-            event = unpackEvent(data)
-            # TODO: publish the ARS430Msg type
-            self.events.publish(event)
-            return (event, headerType)
-
-    def __findHeader(self, data):
+    def __findHeader(self, udpData):
         # TODO: Find the header in the UDPMsg.data object, and return
         # a Headers enum corresponding to that header type
 
         # TODO: return the actual header, not just STATUS
-        return Headers.STATUS
+        return ARS430Publisher.Headers.STATUS
 
     def __unpackStatus(self, statusData):
         # TODO: Return the ARS430StatusMsg after unpacking
@@ -121,6 +107,25 @@ class ARS430Publisher:
         # TODO: unpack the radar detections list into the otherwise already-full packet, using the list of bytes corresponding to the RadarDetections 
         print('TODO: unpack the radar detections')
 
+    # Unpack a UDPMsg into the ARS430Msg type, and returns that ARS430Msg as
+    # well as the type
+    def unpackAndPublish(self, udpData):
+        headerType = self.__findHeader(udpData)
+
+        data = udpData[ARS430Publisher.HEADER_LEN:]
+
+        # There is no switch-case in python :(
+        if headerType == ARS430Publisher.Headers.STATUS:
+            status = self.__unpackStatus(data)
+            # TODO: publish the ARS430Msg type
+            self.statuses.publish(status)
+            return (status, headerType)
+        else:
+            event = self.__unpackEvent(data)
+            # TODO: publish the ARS430Msg type
+            self.events.publish(event)
+            return (event, headerType)
+
 
 
 # TODO: Every time a new data packet comes in of type rosudp.UDPMsg, 
@@ -145,6 +150,7 @@ def listener():
     rospy.init_node('ars430', anonymous=True)
 
     # Initialize a publisher and make it available to the callback function
+    global arsPublisher # modify the global variable
     arsPublisher = ARS430Publisher('ars430/statuses', 'ars430/events')
 
     # Listen for UDPMsg types and call the callback function
