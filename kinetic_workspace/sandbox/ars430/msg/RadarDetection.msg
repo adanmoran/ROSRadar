@@ -1,9 +1,10 @@
-uint16 VrelRad
-uint16 A1Ang0
-uint16 AzAng1
-uint16 ElAng
-uint16 RCS0
-uint16 RCS1
+uint16 Range
+int16 VrelRad
+int16 A1Ang0
+int16 AzAng1
+int16 ElAng
+int16 RCS0
+int16 RCS1
 uint8 Prop0
 uint8 Prop1
 uint16 RangeVar
