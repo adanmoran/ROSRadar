@@ -8,8 +8,9 @@ uint64 UtcTimeStamp
 uint32 TimeStamp
 uint32 MeasureCounter
 uint32 CycleCounter
-uint16 NofDEt
-uint16 Vambig
+
+uint16 NofDet
+int16 Vambig
 uint8 CenterFreq
 uint8 DetInPack
 RadarDetection[] DetectionList
