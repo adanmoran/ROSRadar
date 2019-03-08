@@ -26,10 +26,7 @@ def randint32():
 def randint64():
     return randint32() << 32 | randint32()
 
-def publish():
-
-    rospy.init_node('udptestnode', anonymous=True)
-
+def generateStatusMsg():
     CRC = randint16()
     rospy.loginfo('CRC = ' + str(CRC))
 
@@ -110,18 +107,31 @@ def publish():
     msg.ip = '192.168.1.2'
     msg.port = 31122
     data = struct.pack('!HHBQQQBBBBLBBBLQLLBBBBBBBBHH',CRC, Len, SQC, PartNumber, AssemblyPartNumber, SWPartNumber, SerialNumber, BLVersion1, BLVersion2, BLVersion3, BLCRC, SWVersion1, SWVersion2, SWVersion3, SWCRC, UTCTimestamp, Timestamp, CurrentDamping, OpState, CurrentFarCF, CurrentNearCF, Defective, SupVoltLimit, SensorOffTemp, GMMissing, TXOutReduced, MaximumRangeFar, MaximumRangeNear);
+
     
     header = '\x00\xC8\x00\x00\x00\x00\x00\x69\x00\x00\x00\x00\x01\x01\x01\x00'
     msg.data = header + data
 
-    rospy.loginfo('Data is ' + str(len(msg.data)) + ' bytes long')
+    rospy.loginfo('Status Data is ' + str(len(msg.data)) + ' bytes long')
+    return msg
 
+
+def publish():
+
+    # Initialize the publisher
+    rospy.init_node('udptestnode', anonymous=True)
     pub = rospy.Publisher('rosudp/31122', UDPMsg, queue_size = 10)
+    rate = rospy.Rate(50)
 
-    rate =rospy.Rate(50)
+    # Generate random status data
+    statusMsg = generateStatusMsg()
+
+    # TODO: generate random event data
+    # eventMsg = generateEventMsg()
 
     while not rospy.is_shutdown():
-        pub.publish(msg)
+        pub.publish(statusMsg)
+        # TODO: pub.publish(eventMsg)
         rate.sleep()
 
 if __name__ == '__main__':
