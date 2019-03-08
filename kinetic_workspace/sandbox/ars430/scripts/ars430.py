@@ -13,6 +13,7 @@ from ars430.msg import RadarDetection
 
 import struct
 import enum
+import binascii
 from enum import Enum
 
 try:
@@ -41,6 +42,12 @@ class ARS430Publisher:
 
     # The ARS430 has a header length of 16 bytes
     HEADER_LEN = 16
+    STATUS_HEADER_BYTES = '\x00\xc8\x00\x00'
+    FAR0_HEADER_BYTES   = '\x00\xdc\x00\x01'
+    FAR1_HEADER_BYTES   = '\x00\xdc\x00\x02'
+    NEAR0_HEADER_BYTES  = '\x00\xdc\x00\x03' 
+    NEAR1_HEADER_BYTES  = '\x00\xdc\x00\x04' 
+    NEAR2_HEADER_BYTES  = '\x00\xdc\x00\x05' 
 
     # Constructor - initializes rospy Publishers for each of the topics
     def __init__(self, statusTopic, eventTopic):
@@ -50,11 +57,26 @@ class ARS430Publisher:
 
     # Find the header in the UDPMsg.data object, and return
     # a Headers enum corresponding to that header type
-    def __findHeader(self, udpData):
-        udpData
-        
-        # TODO: return the actual header, not just STATUS
-        return ARS430Publisher.Headers.STATUS
+    def __findHeader(self, data):
+        # Split the header into its components
+        header = data[:ARS430Publisher.HEADER_LEN]
+        headerID = header[:4]
+        e2eLength = header[4:8]
+        # If necessary, find out what [8:16] are
+
+        # Determine what type of object this is
+        if headerID == ARS430Publisher.STATUS_HEADER_BYTES:
+            return ARS430Publisher.Headers.STATUS
+        elif headerID == ARS430Publisher.FAR0_HEADER_BYTES:
+            return ARS430Publisher.Headers.FAR0
+        elif headerID == ARS430Publisher.FAR1_HEADER_BYTES:
+            return ARS430Publisher.Headers.FAR1
+        elif headerID == ARS430Publisher.NEAR0_HEADER_BYTES:
+            return ARS430Publisher.Headers.NEAR0
+        elif headerID == ARS430Publisher.NEAR1_HEADER_BYTES:
+            return ARS430Publisher.Headers.NEAR1
+        elif headerID == ARS430Publisher.NEAR2_HEADER_BYTES:
+            return ARS430Publisher.Headers.NEAR2
 
     def __unpackStatus(self, statusData):
         def merge24(int8_part1, int8_part2, int8_part3):
@@ -110,8 +132,7 @@ class ARS430Publisher:
         (RDI_CRC,RDI_Len,RDI_SQC,RDI_MessageCounter,
          RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasurementCounter,
          RDI_CycleCounter,RDI_NofDetections,RDI_Vambig,
-	 RDI_CenterFrequency,RDI_DetectionsInPacket)	 
-        =struct.unpack("!HHBBQLLLHhBB",eventOnlyData)
+	 RDI_CenterFrequency,RDI_DetectionsInPacket) =struct.unpack("!HHBBQLLLHhBB",eventOnlyData)
 
 	packet=ARSEvent()
 	
