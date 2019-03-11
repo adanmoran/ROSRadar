@@ -42,6 +42,7 @@ class ARS430Publisher:
 
     # The ARS430 has a header length of 16 bytes
     HEADER_LEN = 16
+    # The headers in byte format (hexadecimal)
     STATUS_HEADER_BYTES = '\x00\xc8\x00\x00'
     FAR0_HEADER_BYTES   = '\x00\xdc\x00\x01'
     FAR1_HEADER_BYTES   = '\x00\xdc\x00\x02'
@@ -49,11 +50,15 @@ class ARS430Publisher:
     NEAR1_HEADER_BYTES  = '\x00\xdc\x00\x04' 
     NEAR2_HEADER_BYTES  = '\x00\xdc\x00\x05' 
 
+    # Other global information
+    RADAR_DETECTION_START = 32 # byte value of Event data at which the RadarDetection list begins
+    RADAR_DETECTION_PACKAGE_LENGTH = 224 # number of bytes in one element of RadarDetection list
+
     # Constructor - initializes rospy Publishers for each of the topics
     def __init__(self, statusTopic, eventTopic):
-        # TODO: Replace String with an ARS430 message type
-        self.statuses = rospy.Publisher(statusTopic, String, queue_size = 10)
-        self.events = rospy.Publisher(eventTopic, String, queue_size = 10)
+        # Initialize publishers for Event and Status topics
+        self.statuses = rospy.Publisher(statusTopic, ARS430Status, queue_size = 10)
+        self.events = rospy.Publisher(eventTopic, ARS430Event, queue_size = 10)
 
     # Find the header in the UDPMsg.data object, and return
     # a Headers enum corresponding to that header type
@@ -82,7 +87,7 @@ class ARS430Publisher:
         def merge24(int8_part1, int8_part2, int8_part3):
             merged = (int8_part1 << 16) | (int8_part2 << 8) | int8_part3
             return merged
-        # done! TODO: Return the ARS430StatusMsg after unpacking
+        # Unpack the statusData into an ARS430Status
         (_CRC, _Len, _SQC, _PartNumber, _AssemblyPartNumber, _SWPartNumber, _SerialNumber, _BLVersion1, _BLVersion2,
          _BLVersion3, _BLCRC, _SWVersion1, _SWVersion2,_SWVersion3, _SWCRC, _UtcTimeStamp, _TimeStamp, _CurrentDamping,
          _OpState, _CurrentFarCF, _CurrentNearCF, _Defective, _SupplVoltLimit, _SensorOffTemp, _GmMissing, _TxOutReduced,
@@ -91,6 +96,7 @@ class ARS430Publisher:
         _SWVersion = merge24(_SWVersion1, _SWVersion2, _SWVersion3)
         _BLVersion = merge24(_BLVersion1, _BLVersion2, _BLVersion3)
 
+        # Copy the data over into the ARS430Status object
         packet = ARS430Status()
         packet.CRC=_CRC
         packet.Len = _Len
@@ -117,19 +123,26 @@ class ARS430Publisher:
         packet.MaximumRangeFar=_MaximumRangeFar
         packet.MaximumRangeNear=_MaximumRangeNear
 
-        # String('TODO Is Done!: Unpack the statusData into an ARS430StatusMsg'),
+        # Return the ARS430Status object for publishing
         return packet
 
     def __unpackRadarDetections(self, packet, detection_bytes):
-        # TODO: unpack the radar detections list into the otherwise already-full packet, using the list of bytes corresponding to the RadarDetections 
-        print('TODO: unpack the radar detections')
         packet.RadarDetections = []
         index = 0
         length = len(detection_bytes)
+        # Unpack all RadarDetection bytes from the UDP data, which comes in detection_bytes
         while(i<length):
+
+            # Create a new RadarDetection message
             detection = RadarDetection()
-            chunk=detection_bytes[i:i+223]
+            # Unpac the UDP data to get the Radar Detection signals
+            chunk=detection_bytes[i:i+ARS430Publisher.RADAR_DETECTION_PACKAGE_LENGTH]
             (f_Range, f_VrelRad, f_AzAng0, f_AzAng1, f_ElAng, f_RCS0, f_RCS1, f_Prob0, f_Prob1, f_RangeVar, f_VrelRadVar, f_AzAngVar0, f_AzAngVar1, f_ElAngVar, f_Pdh0, f_SNR) = struct.unpack("!HhhhhhhBBHHHHHBB", chunk)
+
+            # TODO: Convert these from int (or uint) to their actual physical value.
+
+            # Fill in the RadarDetection message with the unpacked signals
+            # TODO: RadarDetection.msg should emit floats, doubles, etc... when necessary, not uints
             detection.Range = f_Range
             detection.RelativeRadialVelocity = f_VrelRad
             detection.AzimuthalAngle0 = f_AzAng0
@@ -146,25 +159,28 @@ class ARS430Publisher:
             detection.VarianceElAng = f_ElAngVar
             detection.ProbablityFalseDetection = f_Pdh0
             detection.SignalNoiseRatio = f_SNR
+            # Add this RadarDetection message to the ARS430Event message
             packet.RadarDetections.append(detection)
-            i+=224
+            # Go to the next Radar Detection segment of the UDP data to unpack it
+            i+=ARS430Publisher.RADAR_DETECTION_PACKAGE_LENGTH
+
+        # Return the packet, which is now filled with detections
         return packet
 
     def __unpackEvent(self, eventData):
-       
+        # Split the Event and RadarDetection sections into two.
+        # The event only data is 32 bytes long
+        # The RadarDetection list is the rest of the package
+        eventOnlyData=eventData[:ARS430Publisher.RADAR_DETECTION_START]
 
-	data_length_in_bytes=32
-        #the data mentioned here is the data obtained using the sock.recvfrom in publisher_udp
-
-        eventOnlyData=eventData[:data_length_in_bytes]
-
-        #unpacking the data for Events using struct.unpack
+        # Unpack the data for Events using struct.unpack
         (RDI_CRC,RDI_Len,RDI_SQC,RDI_MessageCounter,
          RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasurementCounter,
          RDI_CycleCounter,RDI_NofDetections,RDI_Vambig,
 	 RDI_CenterFrequency,RDI_DetectionsInPacket) =struct.unpack("!HHBBQLLLHhBB",eventOnlyData)
 
-	packet=ARSEvent()
+        # Convert the unpacked data into an ARS430Event type
+	packet=ARS430Event()
 	
         packet.CRC=RDI_CRC
 	packet.Len=RDI_Len
@@ -180,38 +196,33 @@ class ARS430Publisher:
 	packet.DetInPack=RDI_DetectionsInPacket
 
 	#calling the class Radar Detection for the data starting from the 256th bit/32th byte position 
-        self.__unpackRadarDetections(self, packet, eventData[32:])
+        packet = self.__unpackRadarDetections(self, packet, eventData[ARS430Publisher.RADAR_DETECTION_START:])
 
-
-	# TODO: Unpack the event data, except for the radar detections
-        # TODO: Find the radar detections list and send it to the function for unpacking
-        # TODO: Return the ARS430EventMsg after unpacking. 
-        return packet('TODO: Unpack the eventData into an ARS430EventMsg')
+        # Return the ARS430Event message
+        return packet
 
     # Unpack a UDPMsg into the ARS430Msg type, and returns that ARS430Msg as
     # well as the type
     def unpackAndPublish(self, udpData):
+        # Determine what header is in this UDP packet
         headerType = self.__findHeader(udpData)
 
+        # Separate the header and the data itself
         data = udpData[ARS430Publisher.HEADER_LEN:]
 
         # There is no switch-case in python :(
+        # Unpack the relevant data and publish it to the topics
         if headerType == ARS430Publisher.Headers.STATUS:
             status = self.__unpackStatus(data)
-            # TODO: publish the ARS430Msg type
             self.statuses.publish(status)
             return (status, headerType)
         else:
             event = self.__unpackEvent(data)
-            # TODO: publish the ARS430Msg type
             self.events.publish(event)
             return (event, headerType)
 
 
-# TODO: Every time a new data packet comes in of type rosudp.UDPMsg, 
-# convert using struct.unpack into ARS430 structure
-# TODO: Take ARS430 Structure and emit to two topics: "ars430/event" and "ars430/status"
-# TODO: Also convert information into XYZ coordinates in some meaningful way and publish to topic "ars430/points". This needs to be clarified more in to how we use stuff like probability, variance, elevation, radial distance, velocity, etc"
+# TODO: Convert information into XYZ coordinates in some meaningful way and publish to topic "ars430/points". This needs to be clarified more in to how we use stuff like probability, variance, elevation, radial distance, velocity, etc"
 
 # Global variable corresponding to a publisher for this node
 arsPublisher = None
@@ -236,7 +247,7 @@ def listener():
     # Initialize a publisher and make it available to the callback function
     global arsPublisher # modify the global variable
 
-    arsPublisher = ARS430Publisher('ars430/statuses', 'ars430/events')
+    arsPublisher = ARS430Publisher('ars430/status', 'ars430/event')
 
     # Listen for UDPMsg types and call the callback function
     rospy.Subscriber('rosudp/31122', UDPMsg, callback)
