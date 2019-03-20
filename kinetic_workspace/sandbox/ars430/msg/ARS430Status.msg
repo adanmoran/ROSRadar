@@ -1,5 +1,26 @@
 Header header
 string sourceIP
+
+uint8 TX_OUT_DEFAULT=0
+uint8 TX_OUT_REDUCED=1
+uint8 GM_MISSING_CLEAR=0
+uint8 GM_MISSING=1
+uint8 SENSOR_TEMP_OK=0
+uint8 SENSOR_TEMP_OUT_OF_RANGE=1
+uint8 SUPPLY_VOLT_OK=0
+uint8 SUPPLY_VOLT_OUT_OF_RANGE=1
+uint8 DEFECTIVE_FALSE=0
+uint8 DEFECTIVE_TRUE=1
+uint8 CF_SENSOR_SELECT=0
+uint8 CF_FREQ1=1
+uint8 CF_FREQ2=2
+uint8 CF_FREQ3=3
+uint8 FARCF_FREQ4=4
+uint8 FARCF_FREQ5=5
+uint8 OP_STATE_INITIALIZING=0
+uint8 OP_STATE_STANDBY=1
+uint8 OP_STATE_REPORTING=2
+
 uint16 CRC
 uint16 Len
 uint8 SQC
@@ -13,7 +34,7 @@ uint32 SWVersion
 uint32 SWCRC
 uint64 UTCTimestamp
 uint32 Timestamp
-uint32 CurrentDamping
+float64 CurrentDamping
 uint8 Opstate
 uint8 CurrentFarCF
 uint8 CurrentNearCF
@@ -22,5 +43,5 @@ uint8 SupplyVoltLimit
 uint8 SensorOffTemp
 uint8 GmMissing
 uint8 TxOutReduced
-uint16 MaximumRangeFar
-uint16 MaximumRangeNear
+float32 MaximumRangeFar
+float32 MaximumRangeNear
