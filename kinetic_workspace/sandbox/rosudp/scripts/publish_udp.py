@@ -65,7 +65,7 @@ def publish_from(sock):
             msg.port = addr[1]
             msg.data = data
             # Log stuff to the display
-            rospy.loginfo("New Packet from " + str(addr) + " of size " + str(len(data)))
+            #rospy.loginfo("New Packet from " + str(addr) + " of size " + str(len(data)))
             if DEBUG:
                 print(binascii.hexlify(data))
             # rospy.loginfo(data)
