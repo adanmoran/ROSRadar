@@ -17,6 +17,8 @@ HEADER_SIZE = 16
 
 def randint8():
     return randint(0,255)
+def randsint8():
+    return randint(-127,127)
 def randint16():
     return randint8() << 8 | randint8()
 def randint24():
@@ -25,6 +27,9 @@ def randint32():
     return randint24() << 8 | randint8()
 def randint64():
     return randint32() << 32 | randint32()
+def randsint16():
+    return randsint8() << 8 | randsint8()
+
 
 def generateStatusMsg():
     CRC = randint16()
@@ -116,6 +121,60 @@ def generateStatusMsg():
     return msg
 
 
+def generateEventMsg():
+    CRC = randint16()
+    rospy.loginfo('CRC = ' + str(CRC))
+
+    Len = randint16()
+    rospy.loginfo('Len = ' + str(Len))
+
+    SQC = randint8()
+    rospy.loginfo('SQC = ' + str(SQC))
+
+    MsgCnt = randint8()
+    rospy.loginfo('Message Counter = ' + str(MsgCnt))
+
+    UtcTimeStamp = randint64()
+    rospy.loginfo('UtcTimeStamp = ' + str(UtcTimeStamp))
+
+    TimeStamp = randint32()
+    rospy.loginfo('TimeSTamp = ' + str(TimeStamp))
+
+    MeasurementCounter = randint32()
+    rospy.loginfo('MeasurementCounter = ' + str(MeasurementCounter))
+
+    CycleCounter = randint32()
+    rospy.loginfo('CycleCounter = ' + str(CycleCounter))
+
+    NofDetections = randint16()
+    rospy.loginfo('NofDetections = ' + str(NofDetections))
+
+    Vambig = randsint16()
+    rospy.loginfo('Vambig = ' + str(Vambig))
+    
+    
+    CenterFreq = randint8()
+    rospy.loginfo('CenterFrequency = ' + str(CenterFreq))
+
+    DetectionsInPacket = randint8()
+    rospy.loginfo('DetectionsInPacket = ' + str(DetectionsInPacket))
+
+
+    msg = UDPMsg();
+    msg.ip = '192.168.1.2'
+    msg.port = 31122
+    data = struct.pack('!HHBBQLLLHhBB',CRC, Len, SQC, MsgCnt, UtcTimeStamp, TimeStamp, MeasureCounter, 
+    CycleCounter, NofDetections, Vambig, CenterFrequency, DetectionsInPacket);
+
+    
+    header = '\x00\xDC\x00\x03\x00\x00\x00\x69\x00\x00\x00\x00\x01\x01\x01\x00'
+    msg.data = header + data
+
+    rospy.loginfo('Status Data is ' + str(len(msg.data)) + ' bytes long')
+    return msg
+
+
+
 def publish():
 
     # Initialize the publisher
@@ -126,12 +185,12 @@ def publish():
     # Generate random status data
     statusMsg = generateStatusMsg()
 
-    # TODO: generate random event data
-    # eventMsg = generateEventMsg()
+    
+    eventMsg = generateEventMsg()
 
     while not rospy.is_shutdown():
         pub.publish(statusMsg)
-        # TODO: pub.publish(eventMsg)
+        pub.publish(eventMsg)
         rate.sleep()
 
 if __name__ == '__main__':
