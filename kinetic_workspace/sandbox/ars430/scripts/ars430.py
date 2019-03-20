@@ -12,8 +12,9 @@ from ars430.msg import ARS430Status
 from ars430.msg import RadarDetection
 
 import struct
-import enum
 import binascii
+import math
+import enum
 from enum import Enum
 
 try:
@@ -142,23 +143,23 @@ class ARS430Publisher:
             # TODO: Convert these from int (or uint) to their actual physical value.
 
             # Fill in the RadarDetection message with the unpacked signals
-            # TODO: RadarDetection.msg should emit floats, doubles, etc... when necessary, not uints
-            detection.Range = f_Range
-            detection.RelativeRadialVelocity = f_VrelRad
-            detection.AzimuthalAngle0 = f_AzAng0
-            detection.AzimuthalAngle1 = f_AzAng1
-            detection.ElevationAngle = f_ElAng
-            detection.RadarCrossSection0 = f_RCS0
-            detection.RadarCrossSection1 = f_RCS1
-            detection.ProbablityAz0 = f_Prob0
-            detection.ProbablityAz1 = f_Prob1
-            detection.VarianceRange = f_RangeVar
-            detection.VarianceRadialVelocity = f_VrelRadVar
-            detection.VarianceAz0 = f_AzAngVar0
-            detection.VarianceAz1 = f_AzAngVar1
-            detection.VarianceElAng = f_ElAngVar
-            detection.ProbablityFalseDetection = f_Pdh0
-            detection.SignalNoiseRatio = f_SNR
+            # Note that these signals are converted to their actual physical value
+            detection.Range = f_Range/65534.0 * 300                         # meters
+            detection.RelativeRadialVelocity = f_VrelRad/65534.0 * 300      # meters/s
+            detection.AzimuthalAngle0 = f_AzAng0/65534.0 * (2*math.pi)      # rad
+            detection.AzimuthalAngle1 = f_AzAng1/65534.0 * (2*math.pi)      # rad
+            detection.ElevationAngle = f_ElAng/65534.0 * (2*math.pi)        # rad
+            detection.RadarCrossSection0 = f_RCS0/65534.0 * 200             # dBm^2
+            detection.RadarCrossSection1 = f_RCS1/65534.0 * 200             # dBm^2
+            detection.ProbablityAz0 = f_Prob0/254.0                         # (unitless)
+            detection.ProbablityAz1 = f_Prob1/254.0                         # (unitless)
+            detection.VarianceRange = f_RangeVar/65534.0 * 10               # m^2
+            detection.VarianceRadialVelocity = f_VrelRadVar/65534.0 * 10    # (m/s)^2
+            detection.VarianceAz0 = f_AzAngVar0/65534.0                     # rad^2
+            detection.VarianceAz1 = f_AzAngVar1/65534.0                     # rad^2
+            detection.VarianceElAng = f_ElAngVar/65534.0                    # rad^2
+            detection.ProbablityFalseDetection = f_Pdh0/254.0               # (unitless)
+            detection.SignalNoiseRatio = (f_SNR + 110.0)/10.0               # dBr
             # Add this RadarDetection message to the ARS430Event message
             packet.RadarDetections.append(detection)
             # Go to the next Radar Detection segment of the UDP data to unpack it
@@ -182,17 +183,17 @@ class ARS430Publisher:
         # Convert the unpacked data into an ARS430Event type
 	packet=ARS430Event()
 	
-        packet.CRC=RDI_CRC
-	packet.Len=RDI_Len
-	packet.SQC=RDI_SQC
-	packet.MessageCounter=RDI_MessageCounter
-	packet.UtcTimeStamp=RDI_UtcTimeStamp
-	packet.TimeStamp=RDI_TimeStamp
-	packet.MeasureCounter=RDI_MeasureCounter
-	packet.CycleCounter=RDI_CycleCounter
-	packet.NofDet=RDI_NofDetections
-	packet.Vambig=RDI_Vambig
-	packet.CenterFreq=RDI_CenterFrequency
+        packet.CRC=RDI_CRC                          # (unitless)
+	packet.Len=RDI_Len                          # (unitless)
+	packet.SQC=RDI_SQC                          # (unitless)
+	packet.MessageCounter=RDI_MessageCounter    # (unitless)
+	packet.UtcTimeStamp=RDI_UtcTimeStamp        # nsec
+	packet.TimeStamp=RDI_TimeStamp              # usec
+	packet.MeasureCounter=RDI_MeasureCounter    # (unitless)
+	packet.CycleCounter=RDI_CycleCounter        # (unitless)
+	packet.NofDet=RDI_NofDetections             # (unitless)
+	packet.Vambig=RDI_Vambig/65534.0 * 200      # m/s
+	packet.CenterFreq=RDI_CenterFrequency       # GHz
 	packet.DetInPack=RDI_DetectionsInPacket
 
 	#calling the class Radar Detection for the data starting from the 256th bit/32th byte position 
