@@ -53,7 +53,9 @@ class ARS430Publisher:
 
     # Other global information
     RADAR_DETECTION_START = 32 # byte value of Event data at which the RadarDetection list begins
-    RADAR_DETECTION_PACKAGE_LENGTH = 224 # number of bytes in one element of RadarDetection list
+    RADAR_DETECTION_PACKAGE_LENGTH = 28 # number of bytes in one element of RadarDetection list
+    SERIAL_NUMBER_START = 29 # byte value of StatusData where SerialNumber begins
+    SERIAL_NUMBER_LENGTH = 26 # number of bytes in the SerialNumber of Status data
 
     # Constructor - initializes rospy Publishers for each of the topics
     def __init__(self, statusTopic, eventTopic):
@@ -88,12 +90,23 @@ class ARS430Publisher:
         def merge24(int8_part1, int8_part2, int8_part3):
             merged = (int8_part1 << 16) | (int8_part2 << 8) | int8_part3
             return merged
+        # The serial number is an array of uint8s, so we need to split the unpacking into 3 sections: before SN, SN, and after SN
+        before_sn = statusData[:ARS430Publisher.SERIAL_NUMBER_START]
+        serial_number_end_byte = ARS430Publisher.SERIAL_NUMBER_START + ARS430Publisher.SERIAL_NUMBER_LENGTH
+        _SerialNumber = statusData[ARS430Publisher.SERIAL_NUMBER_START : serial_number_end_byte]
+        after_sn = statusData[serial_number_end_byte:]
+
         # Unpack the statusData into an ARS430Status
-        (_CRC, _Len, _SQC, _PartNumber, _AssemblyPartNumber, _SWPartNumber, _SerialNumber, _BLVersion1, _BLVersion2,
+        # Step 1: unpack the "before SN" section
+        (_CRC, _Len, _SQC, _PartNumber, _AssemblyPartNumber, _SWPartNumber) = struct.unpack("!HHBQQQ", before_sn)
+
+        # Step 2: unpack the "after SN" section, _SerialNumber, 
+        (_BLVersion1, _BLVersion2,
          _BLVersion3, _BLCRC, _SWVersion1, _SWVersion2,_SWVersion3, _SWCRC, _UtcTimeStamp, _TimeStamp, _CurrentDamping,
          _OpState, _CurrentFarCF, _CurrentNearCF, _Defective, _SupplVoltLimit, _SensorOffTemp, _GmMissing, _TxOutReduced,
          _MaximumRangeFar, _MaximumRangeNear
-         ) = struct.unpack("!HHBQQQBBBBLBBBLQLLBBBBBBBBHH", statusData)
+         ) = struct.unpack("!BBBLBBBLQLLBBBBBBBBHH", after_sn)
+        # Merge the 24-byte objects together
         _SWVersion = merge24(_SWVersion1, _SWVersion2, _SWVersion3)
         _BLVersion = merge24(_BLVersion1, _BLVersion2, _BLVersion3)
 
@@ -127,18 +140,22 @@ class ARS430Publisher:
         # Return the ARS430Status object for publishing
         return packet
 
-    def __unpackRadarDetections(self, packet, detection_bytes):
-        packet.RadarDetections = []
+    def __unpackRadarDetections(self, packet, detection_bytes, numDetections):
+        packet.DetectionList = []
         index = 0
         length = len(detection_bytes)
         # Unpack all RadarDetection bytes from the UDP data, which comes in detection_bytes
-        while(i<length):
+        while(index<length and (index/ARS430Publisher.RADAR_DETECTION_PACKAGE_LENGTH) <= numDetections):
 
             # Create a new RadarDetection message
             detection = RadarDetection()
             # Unpac the UDP data to get the Radar Detection signals
-            chunk=detection_bytes[i:i+ARS430Publisher.RADAR_DETECTION_PACKAGE_LENGTH]
-            (f_Range, f_VrelRad, f_AzAng0, f_AzAng1, f_ElAng, f_RCS0, f_RCS1, f_Prob0, f_Prob1, f_RangeVar, f_VrelRadVar, f_AzAngVar0, f_AzAngVar1, f_ElAngVar, f_Pdh0, f_SNR) = struct.unpack("!HhhhhhhBBHHHHHBB", chunk)
+            chunk=detection_bytes[index:index+ARS430Publisher.RADAR_DETECTION_PACKAGE_LENGTH]
+            (f_Range, f_VrelRad, f_AzAng0,
+             f_AzAng1, f_ElAng, f_RCS0, 
+             f_RCS1, f_Prob0, f_Prob1, 
+             f_RangeVar, f_VrelRadVar, f_AzAngVar0, 
+             f_AzAngVar1, f_ElAngVar, f_Pdh0, f_SNR) = struct.unpack("!HhhhhhhBBHHHHHBB", chunk)
 
             # TODO: Convert these from int (or uint) to their actual physical value.
 
@@ -151,19 +168,19 @@ class ARS430Publisher:
             detection.ElevationAngle = f_ElAng/65534.0 * (2*math.pi)        # rad
             detection.RadarCrossSection0 = f_RCS0/65534.0 * 200             # dBm^2
             detection.RadarCrossSection1 = f_RCS1/65534.0 * 200             # dBm^2
-            detection.ProbablityAz0 = f_Prob0/254.0                         # (unitless)
-            detection.ProbablityAz1 = f_Prob1/254.0                         # (unitless)
-            detection.VarianceRange = f_RangeVar/65534.0 * 10               # m^2
-            detection.VarianceRadialVelocity = f_VrelRadVar/65534.0 * 10    # (m/s)^2
-            detection.VarianceAz0 = f_AzAngVar0/65534.0                     # rad^2
-            detection.VarianceAz1 = f_AzAngVar1/65534.0                     # rad^2
-            detection.VarianceElAng = f_ElAngVar/65534.0                    # rad^2
-            detection.ProbablityFalseDetection = f_Pdh0/254.0               # (unitless)
-            detection.SignalNoiseRatio = (f_SNR + 110.0)/10.0               # dBr
+            detection.ProbabilityAz0 = f_Prob0/254.0                         # (unitless)
+            detection.ProbabilityAz1 = f_Prob1/254.0                         # (unitless)
+            detection.RangeVariance = f_RangeVar/65534.0 * 10               # m^2
+            detection.RadialVelocityVariance = f_VrelRadVar/65534.0 * 10    # (m/s)^2
+            detection.Az0Variance = f_AzAngVar0/65534.0                     # rad^2
+            detection.Az1Variance = f_AzAngVar1/65534.0                     # rad^2
+            detection.ElAngleVariance = f_ElAngVar/65534.0                    # rad^2
+            detection.ProbabilityFalseDetection = f_Pdh0/254.0               # (unitless)
+            detection.SNR = (f_SNR + 110.0)/10.0               # dBr
             # Add this RadarDetection message to the ARS430Event message
-            packet.RadarDetections.append(detection)
+            packet.DetectionList.append(detection)
             # Go to the next Radar Detection segment of the UDP data to unpack it
-            i+=ARS430Publisher.RADAR_DETECTION_PACKAGE_LENGTH
+            index+=ARS430Publisher.RADAR_DETECTION_PACKAGE_LENGTH
 
         # Return the packet, which is now filled with detections
         return packet
@@ -176,7 +193,7 @@ class ARS430Publisher:
 
         # Unpack the data for Events using struct.unpack
         (RDI_CRC,RDI_Len,RDI_SQC,RDI_MessageCounter,
-         RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasurementCounter,
+         RDI_UtcTimeStamp,RDI_TimeStamp,RDI_MeasureCounter,
          RDI_CycleCounter,RDI_NofDetections,RDI_Vambig,
 	 RDI_CenterFrequency,RDI_DetectionsInPacket) =struct.unpack("!HHBBQLLLHhBB",eventOnlyData)
 
@@ -196,8 +213,11 @@ class ARS430Publisher:
 	packet.CenterFreq=RDI_CenterFrequency       # GHz
 	packet.DetInPack=RDI_DetectionsInPacket     # (unitless)
 
-	#calling the class Radar Detection for the data starting from the 256th bit/32th byte position 
-        packet = self.__unpackRadarDetections(self, packet, eventData[ARS430Publisher.RADAR_DETECTION_START:])
+        if RDI_DetectionsInPacket > 0:
+            #calling the class Radar Detection for the data starting from the 256th bit/32th byte position 
+            packet = self.__unpackRadarDetections(packet, eventData[ARS430Publisher.RADAR_DETECTION_START:], RDI_DetectionsInPacket)
+        else:
+            packet.DetectionList = []
 
         # Return the ARS430Event message
         return packet
@@ -210,6 +230,7 @@ class ARS430Publisher:
 
         # Separate the header and the data itself
         data = udpData[ARS430Publisher.HEADER_LEN:]
+        # TODO: publish should emit the IP address of the radar
 
         # There is no switch-case in python :(
         # Unpack the relevant data and publish it to the topics
@@ -219,7 +240,9 @@ class ARS430Publisher:
             return (status, headerType)
         else:
             event = self.__unpackEvent(data)
-            self.events.publish(event)
+            # Only publish a packet if it had any detections in it
+            if event.DetInPack > 0:
+                self.events.publish(event)
             return (event, headerType)
 
 
@@ -234,13 +257,14 @@ def callback(data):
     global arsPublisher
 
     # Tell people we heard a UDP message!
-    rospy.loginfo(rospy.get_caller_id() + "I heard a message from %s", str(data.ip))
+    # rospy.loginfo(rospy.get_caller_id() + "I heard a message from %s", str(data.ip))
 
     # TODO: Only publish data if it comes from a desired IP address, which can be stored
     # in the publisher itself
     packet, type = arsPublisher.unpackAndPublish(data.data)
 
     # TODO: Do stuff with the packet
+    # TODO: Convert the range and azimuth of the packet into xyz coordinates and send to Rviz IF it is an event packet and has detections
 
 def listener():
     rospy.init_node('ars430', anonymous=True)

@@ -27,7 +27,7 @@ uint8 SQC
 uint64 PartNumber
 uint64 AssemblyPartNumber
 uint64 SWPartNumber
-uint8 SerialNumber
+uint8[26] SerialNumber
 uint32 BLVersion
 uint32 BLCRC
 uint32 SWVersion
