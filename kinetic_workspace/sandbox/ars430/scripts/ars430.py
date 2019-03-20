@@ -99,30 +99,30 @@ class ARS430Publisher:
 
         # Copy the data over into the ARS430Status object
         packet = ARS430Status()
-        packet.CRC=_CRC
-        packet.Len = _Len
-        packet.SQC = _SQC
-        packet.PartNumber = _PartNumber
-        packet.AssemblyPartNumber =_AssemblyPartNumber
-        packet.SWPartNumber =_SWPartNumber
-        packet.SerialNumber = _SerialNumber
-        packet.BLVersion=_BLVersion
-        packet.BLCRC=_BLCRC
-        packet.SWVersion=_SWVersion
-        packet.SWCRC=_SWCRC
-        packet.UTCTimestamp=_UtcTimeStamp
-        packet.Timestamp=_TimeStamp
-        packet.CurrentDamping=_CurrentDamping
-        packet.Opstate=_OpState
-        packet.CurrentFarCF=_CurrentFarCF
-        packet.CurrentNearCF=_CurrentNearCF
-        packet.Defective=_Defective
-        packet.SupplyVoltLimit=_SupplVoltLimit
-        packet.SensorOffTemp=_SensorOffTemp
-        packet.GmMissing=_GmMissing
-        packet.TxOutReduced=_TxOutReduced
-        packet.MaximumRangeFar=_MaximumRangeFar
-        packet.MaximumRangeNear=_MaximumRangeNear
+        packet.CRC=_CRC                                                                         # (unitless)
+        packet.Len = _Len                                                                       # (unitless)
+        packet.SQC = _SQC                                                                       # (unitless)
+        packet.PartNumber = _PartNumber                                                         # (unitless)
+        packet.AssemblyPartNumber =_AssemblyPartNumber                                          # (unitless)
+        packet.SWPartNumber =_SWPartNumber                                                      # (unitless)
+        packet.SerialNumber = _SerialNumber                                                     # (unitless)
+        packet.BLVersion=_BLVersion                                                             # (unitless)
+        packet.BLCRC=_BLCRC                                                                     # (unitless)
+        packet.SWVersion=_SWVersion                                                             # (unitless)
+        packet.SWCRC=_SWCRC                                                                     # (unitless)
+        packet.UTCTimestamp=_UtcTimeStamp                                                       # nsec
+        packet.Timestamp=_TimeStamp                                                             # usec
+        packet.CurrentDamping= ((_CurrentDamping * 0.931322575049159) - 2000000000) /100000000  # dB
+        packet.Opstate=_OpState                                                                 # (unitless)
+        packet.CurrentFarCF=_CurrentFarCF                                                       # (unitless)
+        packet.CurrentNearCF=_CurrentNearCF                                                     # (unitless)
+        packet.Defective=_Defective                                                             # (unitless)
+        packet.SupplyVoltLimit=_SupplVoltLimit                                                  # (unitless)
+        packet.SensorOffTemp=_SensorOffTemp                                                     # (unitless)
+        packet.GmMissing=_GmMissing                                                             # (unitless)
+        packet.TxOutReduced=_TxOutReduced                                                       # (unitless)
+        packet.MaximumRangeFar=_MaximumRangeFar * 0.1                                           # m
+        packet.MaximumRangeNear=_MaximumRangeNear * 0.1                                         # m
 
         # Return the ARS430Status object for publishing
         return packet
@@ -194,7 +194,7 @@ class ARS430Publisher:
 	packet.NofDet=RDI_NofDetections             # (unitless)
 	packet.Vambig=RDI_Vambig/65534.0 * 200      # m/s
 	packet.CenterFreq=RDI_CenterFrequency       # GHz
-	packet.DetInPack=RDI_DetectionsInPacket
+	packet.DetInPack=RDI_DetectionsInPacket     # (unitless)
 
 	#calling the class Radar Detection for the data starting from the 256th bit/32th byte position 
         packet = self.__unpackRadarDetections(self, packet, eventData[ARS430Publisher.RADAR_DETECTION_START:])
