@@ -65,7 +65,8 @@ class ARS430Publisher:
 
     # Find the header in the UDPMsg.data object, and return
     # a Headers enum corresponding to that header type
-    def __findHeader(self, data):
+    @staticmethod
+    def FindHeader(data):
         # Split the header into its components
         header = data[:ARS430Publisher.HEADER_LEN]
         headerID = header[:4]
@@ -86,7 +87,9 @@ class ARS430Publisher:
         elif headerID == ARS430Publisher.NEAR2_HEADER_BYTES:
             return ARS430Publisher.Headers.NEAR2
 
-    def __unpackStatus(self, statusData):
+    # Method to unpack a status-type message emitted by an ARS430 radar
+    @staticmethod
+    def UnpackStatus(statusData):
         def merge24(int8_part1, int8_part2, int8_part3):
             merged = (int8_part1 << 16) | (int8_part2 << 8) | int8_part3
             return merged
@@ -140,7 +143,8 @@ class ARS430Publisher:
         # Return the ARS430Status object for publishing
         return packet
 
-    def __unpackRadarDetections(self, packet, detection_bytes, numDetections):
+    @staticmethod
+    def UnpackRadarDetections(packet, detection_bytes, numDetections):
         packet.DetectionList = []
         index = 0
         length = len(detection_bytes)
@@ -184,7 +188,8 @@ class ARS430Publisher:
         # Return the packet, which is now filled with detections
         return packet
 
-    def __unpackEvent(self, eventData):
+    @staticmethod
+    def UnpackEvent(eventData):
         # Split the Event and RadarDetection sections into two.
         # The event only data is 32 bytes long
         # The RadarDetection list is the rest of the package
@@ -214,7 +219,7 @@ class ARS430Publisher:
 
         if RDI_DetectionsInPacket > 0:
             #calling the class Radar Detection for the data starting from the 256th bit/32th byte position 
-            packet = self.__unpackRadarDetections(packet, eventData[ARS430Publisher.RADAR_DETECTION_START:], RDI_DetectionsInPacket)
+            packet = ARS430Publisher.UnpackRadarDetections(packet, eventData[ARS430Publisher.RADAR_DETECTION_START:], RDI_DetectionsInPacket)
         else:
             packet.DetectionList = []
 
@@ -225,7 +230,7 @@ class ARS430Publisher:
     # well as the type
     def unpackAndPublish(self, udpData):
         # Determine what header is in this UDP packet
-        headerType = self.__findHeader(udpData)
+        headerType = self.FindHeader(udpData)
 
         # Separate the header and the data itself
         data = udpData[ARS430Publisher.HEADER_LEN:]
@@ -234,12 +239,12 @@ class ARS430Publisher:
         # There is no switch-case in python :(
         # Unpack the relevant data and publish it to the topics
         if headerType == ARS430Publisher.Headers.STATUS:
-            status = self.__unpackStatus(data)
+            status = self.UnpackStatus(data)
             # TODO: fill status.sourceIP
             self.statuses.publish(status)
             return (status, headerType)
         else:
-            event = self.__unpackEvent(data)
+            event = self.UnpackEvent(data)
             event.EventType = headerType.value;
             # TODO: fill event.sourceIP
             # Only publish a packet if it had any detections in it
