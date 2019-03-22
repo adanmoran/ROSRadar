@@ -257,15 +257,15 @@ class ARS430Publisher:
 
     # determine if a header is of near type
     def __isNear(self, headerType):
-        if headerType == ARS430Publisher.Headers.NEAR0 or
-           headerType == ARS430Publisher.Headers.NEAR1 or
+        if headerType == ARS430Publisher.Headers.NEAR0 or \
+           headerType == ARS430Publisher.Headers.NEAR1 or \
            headerType == ARS430Publisher.Headers.NEAR2:
             return True
         return False
 
     # Determine if a header is of far type
     def __isFar(self, headerType):
-        if headerType == ARS430Publisher.Headers.FAR0 or
+        if headerType == ARS430Publisher.Headers.FAR0 or \
            headerType == ARS430Publisher.Headers.FAR1:
             return True
         return False
@@ -277,7 +277,7 @@ class ARS430Publisher:
         packet.sourceIP = self.get_ip()
 
         # Publish it to the relevant topics
-        if __isStatus(headerType):
+        if self.__isStatus(headerType):
             self.statuses.publish(packet)
         # Only publish an event packet if it had any detections in it
         elif packet.DetInPack > 0:
