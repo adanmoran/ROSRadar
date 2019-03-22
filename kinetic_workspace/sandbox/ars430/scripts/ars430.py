@@ -34,12 +34,12 @@ except ImportError:
 class ARS430Publisher:
     # Enumerator defining the ARS430 header types
     class Headers(Enum):
-        STATUS = auto() 
-        FAR0   = auto() 
-        FAR1   = auto()
-        NEAR0  = auto()
-        NEAR1  = auto()
-        NEAR2  = auto()
+        STATUS = 5
+        FAR0   = 0
+        FAR1   = 1
+        NEAR0  = 2
+        NEAR1  = 3
+        NEAR2  = 4
 
     # The ARS430 has a header length of 16 bytes
     HEADER_LEN = 16
@@ -157,8 +157,6 @@ class ARS430Publisher:
              f_RangeVar, f_VrelRadVar, f_AzAngVar0, 
              f_AzAngVar1, f_ElAngVar, f_Pdh0, f_SNR) = struct.unpack("!HhhhhhhBBHHHHHBB", chunk)
 
-            # TODO: Convert these from int (or uint) to their actual physical value.
-
             # Fill in the RadarDetection message with the unpacked signals
             # Note that these signals are converted to their actual physical value
             detection.Range = f_Range/65534.0 * 300                         # meters
@@ -175,6 +173,7 @@ class ARS430Publisher:
             detection.Az0Variance = f_AzAngVar0/65534.0                     # rad^2
             detection.Az1Variance = f_AzAngVar1/65534.0                     # rad^2
             detection.ElAngleVariance = f_ElAngVar/65534.0                    # rad^2
+            # TODO: PdH0 is a bitstream of flags, not an actual probability value. Split it into those bits and set flags accordingly.
             detection.ProbabilityFalseDetection = f_Pdh0/254.0               # (unitless)
             detection.SNR = (f_SNR + 110.0)/10.0               # dBr
             # Add this RadarDetection message to the ARS430Event message
@@ -236,10 +235,13 @@ class ARS430Publisher:
         # Unpack the relevant data and publish it to the topics
         if headerType == ARS430Publisher.Headers.STATUS:
             status = self.__unpackStatus(data)
+            # TODO: fill status.sourceIP
             self.statuses.publish(status)
             return (status, headerType)
         else:
             event = self.__unpackEvent(data)
+            event.EventType = headerType.value;
+            # TODO: fill event.sourceIP
             # Only publish a packet if it had any detections in it
             if event.DetInPack > 0:
                 self.events.publish(event)
