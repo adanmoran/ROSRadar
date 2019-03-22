@@ -58,10 +58,14 @@ class ARS430Publisher:
     SERIAL_NUMBER_LENGTH = 26 # number of bytes in the SerialNumber of Status data
 
     # Constructor - initializes rospy Publishers for each of the topics
-    def __init__(self, statusTopic, eventTopic):
+    def __init__(self, ip, statusTopic, eventTopic):
         # Initialize publishers for Event and Status topics
         self.statuses = rospy.Publisher(statusTopic, ARS430Status, queue_size = 10)
         self.events = rospy.Publisher(eventTopic, ARS430Event, queue_size = 10)
+        self.ip = ip
+
+     def get_ip(self):
+         return ip
 
     # Find the header in the UDPMsg.data object, and return
     # a Headers enum corresponding to that header type
@@ -265,10 +269,11 @@ def callback(data):
 
     # Tell people we heard a UDP message!
     # rospy.loginfo(rospy.get_caller_id() + "I heard a message from %s", str(data.ip))
+    if (arsPublisher.get_ip() == data.ip):
 
-    # TODO: Only publish data if it comes from a desired IP address, which can be stored
-    # in the publisher itself
-    packet, type = arsPublisher.unpackAndPublish(data.data)
+        # doneTODO: Only publish data if it comes from a desired IP address, which can be stored
+        # in the publisher itself
+        packet, type = arsPublisher.unpackAndPublish(data.data)
 
     # TODO: Do stuff with the packet
     # TODO: Convert the range and azimuth of the packet into xyz coordinates and send to Rviz IF it is an event packet and has detections
@@ -279,7 +284,7 @@ def listener():
     # Initialize a publisher and make it available to the callback function
     global arsPublisher # modify the global variable
 
-    arsPublisher = ARS430Publisher('ars430/status', 'ars430/event')
+    arsPublisher = ARS430Publisher('192.168.1.2', 'ars430/status', 'ars430/event')
 
     # Listen for UDPMsg types and call the callback function
     rospy.Subscriber('rosudp/31122', UDPMsg, callback)
