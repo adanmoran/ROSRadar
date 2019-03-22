@@ -1,5 +1,13 @@
 Header header
+
+uint8 FAR0_EVENT=0
+uint8 FAR1_EVENT=1
+uint8 NEAR0_EVENT=2
+uint8 NEAR1_EVENT=3
+uint8 NEAR2_EVENT=4
+
 string sourceIP
+uint8 EventType
 uint16 CRC
 uint16 Len
 uint8 SQC
