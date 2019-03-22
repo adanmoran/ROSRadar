@@ -64,8 +64,8 @@ class ARS430Publisher:
         self.events = rospy.Publisher(eventTopic, ARS430Event, queue_size = 10)
         self.ip = ip
 
-     def get_ip(self):
-         return ip
+    def get_ip(self):
+         return self.ip
 
     # Find the header in the UDPMsg.data object, and return
     # a Headers enum corresponding to that header type
@@ -232,30 +232,35 @@ class ARS430Publisher:
 
     # Unpack a UDPMsg into the ARS430Msg type, and returns that ARS430Msg as
     # well as the type
-    def unpackAndPublish(self, udpData):
+    @staticmethod
+    def Unpack(udpData):
         # Determine what header is in this UDP packet
-        headerType = self.FindHeader(udpData)
+        headerType = ARS430Publisher.FindHeader(udpData)
 
         # Separate the header and the data itself
         data = udpData[ARS430Publisher.HEADER_LEN:]
-        # TODO: publish should emit the IP address of the radar
 
-        # There is no switch-case in python :(
         # Unpack the relevant data and publish it to the topics
         if headerType == ARS430Publisher.Headers.STATUS:
-            status = self.UnpackStatus(data)
-            # TODO: fill status.sourceIP
-            self.statuses.publish(status)
+            status = ARS430Publisher.UnpackStatus(data)
             return (status, headerType)
         else:
-            event = self.UnpackEvent(data)
-            event.EventType = headerType.value;
-            # TODO: fill event.sourceIP
-            # Only publish a packet if it had any detections in it
-            if event.DetInPack > 0:
-                self.events.publish(event)
+            event = ARS430Publisher.UnpackEvent(data)
+            event.EventType = headerType.value
             return (event, headerType)
 
+    def publishNow(self, packet, headerType):
+
+        # Set the IP of the packet
+        packet.sourceIP = self.get_ip()
+
+        # Publish it to the relevant topics
+        if headerType == ARS430Publisher.Headers.STATUS:
+            self.statuses.publish(packet)
+        # Only publish an event packet if it had any detections in it
+        elif packet.DetInPack > 0:
+            self.events.publish(packet)
+        # if the packet had no detections, do nothing
 
 # TODO: Convert information into XYZ coordinates in some meaningful way and publish to topic "ars430/points". This needs to be clarified more in to how we use stuff like probability, variance, elevation, radial distance, velocity, etc"
 
@@ -269,11 +274,11 @@ def callback(data):
 
     # Tell people we heard a UDP message!
     # rospy.loginfo(rospy.get_caller_id() + "I heard a message from %s", str(data.ip))
-    if (arsPublisher.get_ip() == data.ip):
 
-        # doneTODO: Only publish data if it comes from a desired IP address, which can be stored
-        # in the publisher itself
-        packet, type = arsPublisher.unpackAndPublish(data.data)
+    # Only publish data if it comes from a desired IP address
+    if (arsPublisher.get_ip() == data.ip):
+        packet, type = arsPublisher.Unpack(data.data)
+        arsPublisher.publishNow(packet,type)
 
     # TODO: Do stuff with the packet
     # TODO: Convert the range and azimuth of the packet into xyz coordinates and send to Rviz IF it is an event packet and has detections
