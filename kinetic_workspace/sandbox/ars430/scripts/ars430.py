@@ -63,6 +63,8 @@ class ARS430Publisher:
         self.statuses = rospy.Publisher(statusTopic, ARS430Status, queue_size = 10)
         self.events = rospy.Publisher(eventTopic, ARS430Event, queue_size = 10)
         self.ip = ip
+        self.nearPackets = []
+        self.farPackets = []
 
     def get_ip(self):
          return self.ip
@@ -249,18 +251,102 @@ class ARS430Publisher:
             event.EventType = headerType.value
             return (event, headerType)
 
+    # Determine if a header is of status type
+    def __isStatus(self, headerType):
+        return headerType == ARS430Publisher.Headers.STATUS
+
+    # determine if a header is of near type
+    def __isNear(self, headerType):
+        if headerType == ARS430Publisher.Headers.NEAR0 or
+           headerType == ARS430Publisher.Headers.NEAR1 or
+           headerType == ARS430Publisher.Headers.NEAR2:
+            return True
+        return False
+
+    # Determine if a header is of far type
+    def __isFar(self, headerType):
+        if headerType == ARS430Publisher.Headers.FAR0 or
+           headerType == ARS430Publisher.Headers.FAR1:
+            return True
+        return False
+
+    # Immediately publish a packet to the relevant topic
     def publishNow(self, packet, headerType):
 
         # Set the IP of the packet
         packet.sourceIP = self.get_ip()
 
         # Publish it to the relevant topics
-        if headerType == ARS430Publisher.Headers.STATUS:
+        if __isStatus(headerType):
             self.statuses.publish(packet)
         # Only publish an event packet if it had any detections in it
         elif packet.DetInPack > 0:
             self.events.publish(packet)
-        # if the packet had no detections, do nothing
+
+    # Given an event packet and a list of previous events, do the following:
+    # * if the list is empty, save the packet to the list and return nothing
+    # * if the packet has the same timestamp as everything in the list, save the packet and return nothing
+    # * if the packet has a different timestamp than everything in the list, return the list,
+    #      then overwrite the list with the inputted packet.
+    def __storeEvent(self, event, previousEventList):
+        # If the list is empty, save the packet
+        if not previousEventList:
+            previousEventList.append(event)
+            return []
+
+        # The list is not empty; we need to compare the timestamp of the packet with the
+        # timestamp of the list. For simplicity, we will only take the last element of the list
+        # to compare timestamps.
+
+        # If the timestamps match, just save the packet
+        if previousEventList[-1].Timestamp == event.Timestamp:
+            previousEventList.append(event)
+            return []
+
+        # Since the timestamps don't match, now we need to return the previous list
+        # and overwrite it with a new packet
+        # 1. copy the previous list over
+        packetList = list(previousEventList)
+        # 2. clear the previous list
+        del previousEventList[:]
+        # 3. overwrite with the new packet
+        previousEventList.append(event)
+        # 4. return the copy of the old list
+        return packetList
+
+    # Given any event type packet, this will collect NEAR and FAR packages
+    # together so long as they have the same internal timestamp. It will wait until 
+    # a packet of the same type with a new timestamp appears, and then publish the previous
+    # list all at once.
+    # Status messages will be published immediately.
+    # Returns (wasPublished, packet) where
+    # * wasPublished = true if the packet list was immediately published
+    # * packet = the new combined packet containing all detections for this timestamp (or a status packet)
+    def publishTogether(self, packet, headerType):
+        # Set the IP of the packet
+        packet.sourceIP = self.get_ip()
+
+        # publish status messages immediately
+        if __isStatus(headerType):
+            self.statuses.publish(packet)
+            return (True, packet)
+
+        # Save the package to the relevant list of packages.
+        packetList = []
+        if __isNear(headerType):
+            packetList = self.__storeEvent(packet, self.nearPackets)
+        else:
+            packetList = self.__storeEvent(packet, self.farPackets)
+
+        # If the packet list is empty, then the storePacket function just saved the packet.
+        # Otherwise, the packetList contains all packets of one timestamp, and should be emitted
+        # all together into an event topic
+        if not packetList:
+            return (False, packet)
+
+        # TODO: Collect all the packets together as one event and publish that, then return it
+
+
 
 # TODO: Convert information into XYZ coordinates in some meaningful way and publish to topic "ars430/points". This needs to be clarified more in to how we use stuff like probability, variance, elevation, radial distance, velocity, etc"
 
