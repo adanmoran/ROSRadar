@@ -122,6 +122,7 @@ class ARS430Publisher:
 
         # Copy the data over into the ARS430Status object
         packet = ARS430Status()
+        packet.EventType = ARS430Publisher.Headers.STATUS.value                                 # (custom by us, not continental)
         packet.CRC=_CRC                                                                         # (unitless)
         packet.Len = _Len                                                                       # (unitless)
         packet.SQC = _SQC                                                                       # (unitless)
@@ -246,39 +247,39 @@ class ARS430Publisher:
         # Unpack the relevant data and publish it to the topics
         if headerType == ARS430Publisher.Headers.STATUS:
             status = ARS430Publisher.UnpackStatus(data)
-            return (status, headerType)
+            return status
         else:
             event = ARS430Publisher.UnpackEvent(data)
             event.EventType = headerType.value
-            return (event, headerType)
+            return event
 
     # Determine if a header is of status type
-    def __isStatus(self, headerType):
-        return headerType == ARS430Publisher.Headers.STATUS
+    def __isStatus(self, packet):
+        return packet.EventType == ARS430Publisher.Headers.STATUS.value
 
     # determine if a header is of near type
-    def __isNear(self, headerType):
-        if headerType == ARS430Publisher.Headers.NEAR0 or \
-           headerType == ARS430Publisher.Headers.NEAR1 or \
-           headerType == ARS430Publisher.Headers.NEAR2:
+    def __isNear(self, packet):
+        if packet.EventType == ARS430Publisher.Headers.NEAR0.value or \
+           packet.EventType == ARS430Publisher.Headers.NEAR1.value or \
+           packet.EventType == ARS430Publisher.Headers.NEAR2.value:
             return True
         return False
 
     # Determine if a header is of far type
-    def __isFar(self, headerType):
-        if headerType == ARS430Publisher.Headers.FAR0 or \
-           headerType == ARS430Publisher.Headers.FAR1:
+    def __isFar(self, packet):
+        if packet.EventType == ARS430Publisher.Headers.FAR0.value or \
+           packet.EventType == ARS430Publisher.Headers.FAR1.value:
             return True
         return False
 
     # Immediately publish a packet to the relevant topic
-    def publishNow(self, packet, headerType):
+    def publishNow(self, packet):
 
         # Set the IP of the packet
         packet.sourceIP = self.get_ip()
 
         # Publish it to the relevant topics
-        if self.__isStatus(headerType):
+        if self.__isStatus(packet):
             self.statuses.publish(packet)
         # Only publish an event packet if it had any detections in it
         elif packet.DetInPack > 0:
@@ -319,12 +320,12 @@ class ARS430Publisher:
     # together so long as they have the same internal timestamp. It will wait until 
     # a packet of the same type with a new timestamp appears, and then return the previous list all at once.
     # Returns (wasPublished, packet) where
-    # * wasPublished = true if the packet list was returned (individual packets are still published)
+    # * wasPublished = true if a new collected packet list was returned
     # * packets = the new combined packet containing all detections for this timestamp (or a status packet)
-    def collect(self, packet, headerType):
+    def collect(self, packet):
         # status messages are returned immediately
-        if self.__isStatus(headerType):
-            return (True, packet)
+        if self.__isStatus(packet):
+            return (False, packet)
 
         # don't do anything if there were no detections in this packet. We don't care.
         if packet.DetInPack == 0:
@@ -332,7 +333,7 @@ class ARS430Publisher:
 
         # Save the package to the relevant list of packages.
         packetList = []
-        if self.__isNear(headerType):
+        if self.__isNear(packet):
             packetList = self.__storeEvent(packet, self.nearPackets)
         else:
             packetList = self.__storeEvent(packet, self.farPackets)
@@ -364,21 +365,6 @@ class ARS430Publisher:
             combinedPacket.DetectionList += event.DetectionList
 
         return (True, combinedPacket)
-           # print("--------------")
-           # print("EventType: " + str(event.EventType))
-           # print("CRC: " + str(event.CRC))
-           # print("Len: " + str(event.Len))
-           # print("Len: " + str(event.SQC))
-           # print("MessageCounter: " + str(event.MessageCounter))
-           # print("UTC: " + str(event.UtcTimeStamp))
-           # print("Time: " + str(event.TimeStamp))
-           # print("MeasureCounter: " + str(event.MeasureCounter))
-           # print("CycleCounter: " + str(event.CycleCounter))
-           # print("NofDet: " + str(event.NofDet))
-           # print("Vambig: " + str(event.Vambig))
-           # print("CenterFreq: " + str(event.CenterFreq))
-           # print("DetInPack: " + str(event.DetInPack))
-
 
 # TODO: Convert information into XYZ coordinates in some meaningful way and publish to topic "ars430/points". This needs to be clarified more in to how we use stuff like probability, variance, elevation, radial distance, velocity, etc"
 
@@ -397,11 +383,13 @@ def callback(data):
 
     # Only publish data if it comes from a desired IP address
     if (arsPublisher.get_ip() == data.ip):
-        packet, type = arsPublisher.Unpack(data.data)
-        arsPublisher.publishNow(packet,type)
-        collected, jointPacket = arsPublisher.collect(packet,type)
-        # TODO: Convert every element of the packet into XYZ and emit to rviz
+        packet = arsPublisher.Unpack(data.data)
+        arsPublisher.publishNow(packet)
+        collected, jointPacket = arsPublisher.collect(packet)
+        # TODO: Convert every element of the packet into XYZ marker and emit to rviz
         # if collected:
+        #    for detection in jointPacket.DetectionList:
+        #        convertDetection to XYZ here
 
 def listener():
     rospy.init_node('ars430', anonymous=True)
