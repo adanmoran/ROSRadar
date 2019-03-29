@@ -5,6 +5,7 @@
 ###########
 import rospy
 import roslib; roslib.load_manifest('ars430')
+from visualization_msgs.msg import Marker
 from std_msgs.msg import String
 from rosudp.msg import UDPMsg
 from ars430.msg import ARS430Event
@@ -155,7 +156,7 @@ class ARS430Publisher:
         index = 0
         length = len(detection_bytes)
         # Unpack all RadarDetection bytes from the UDP data, which comes in detection_bytes
-        while(index<length and (index/ARS430Publisher.RADAR_DETECTION_PACKAGE_LENGTH) <= numDetections):
+        while(index<length and (index/ARS430Publisher.RADAR_DETECTION_PACKAGE_LENGTH) < numDetections):
 
             # Create a new RadarDetection message
             detection = RadarDetection()
@@ -299,7 +300,7 @@ class ARS430Publisher:
         # to compare timestamps.
 
         # If the timestamps match, just save the packet
-        if previousEventList[-1].Timestamp == event.Timestamp:
+        if previousEventList[-1].TimeStamp == event.TimeStamp:
             previousEventList.append(event)
             return []
 
@@ -316,47 +317,80 @@ class ARS430Publisher:
 
     # Given any event type packet, this will collect NEAR and FAR packages
     # together so long as they have the same internal timestamp. It will wait until 
-    # a packet of the same type with a new timestamp appears, and then publish the previous
-    # list all at once.
-    # Status messages will be published immediately.
+    # a packet of the same type with a new timestamp appears, and then return the previous list all at once.
     # Returns (wasPublished, packet) where
-    # * wasPublished = true if the packet list was immediately published
-    # * packet = the new combined packet containing all detections for this timestamp (or a status packet)
-    def publishTogether(self, packet, headerType):
-        # Set the IP of the packet
-        packet.sourceIP = self.get_ip()
-
-        # publish status messages immediately
-        if __isStatus(headerType):
-            self.statuses.publish(packet)
+    # * wasPublished = true if the packet list was returned (individual packets are still published)
+    # * packets = the new combined packet containing all detections for this timestamp (or a status packet)
+    def collect(self, packet, headerType):
+        # status messages are returned immediately
+        if self.__isStatus(headerType):
             return (True, packet)
+
+        # don't do anything if there were no detections in this packet. We don't care.
+        if packet.DetInPack == 0:
+            return (False, packet)
 
         # Save the package to the relevant list of packages.
         packetList = []
-        if __isNear(headerType):
+        if self.__isNear(headerType):
             packetList = self.__storeEvent(packet, self.nearPackets)
         else:
             packetList = self.__storeEvent(packet, self.farPackets)
 
-        # If the packet list is empty, then the storePacket function just saved the packet.
-        # Otherwise, the packetList contains all packets of one timestamp, and should be emitted
-        # all together into an event topic
+        # If the packet list is empty, then the storePacket function just saved the packet. This means
+        # the packet should not be combined for anything else.
         if not packetList:
             return (False, packet)
 
-        # TODO: Collect all the packets together as one event and publish that, then return it
+        # If the packet list is NOT empty, then we have started a new list and are supposed to 
+        # emit this one. Let's collect all the packets together into one event and return it for whatever we need. We don't set CRC or Len since they don't often match. 
 
+        combinedPacket = ARS430Event()
+        combinedPacket.sourceIP = packet.sourceIP
+        combinedPacket.EventType = packet.EventType
+        combinedPacket.SQC = packet.SQC
+        combinedPacket.MessageCounter = packet.MessageCounter
+        combinedPacket.UtcTimeStamp = packet.UtcTimeStamp
+        combinedPacket.TimeStamp = packet.TimeStamp
+        combinedPacket.MeasureCounter = packet.MeasureCounter
+        combinedPacket.CycleCounter = packet.CycleCounter
+        combinedPacket.NofDet = packetList[0].NofDet
+        combinedPacket.Vambig = packet.Vambig
+        combinedPacket.DetInPack = 0
+        combinedPacket.DetectionList = []
+
+        for event in packetList:
+            combinedPacket.DetInPack += event.DetInPack
+            combinedPacket.DetectionList += event.DetectionList
+
+        return (True, combinedPacket)
+           # print("--------------")
+           # print("EventType: " + str(event.EventType))
+           # print("CRC: " + str(event.CRC))
+           # print("Len: " + str(event.Len))
+           # print("Len: " + str(event.SQC))
+           # print("MessageCounter: " + str(event.MessageCounter))
+           # print("UTC: " + str(event.UtcTimeStamp))
+           # print("Time: " + str(event.TimeStamp))
+           # print("MeasureCounter: " + str(event.MeasureCounter))
+           # print("CycleCounter: " + str(event.CycleCounter))
+           # print("NofDet: " + str(event.NofDet))
+           # print("Vambig: " + str(event.Vambig))
+           # print("CenterFreq: " + str(event.CenterFreq))
+           # print("DetInPack: " + str(event.DetInPack))
 
 
 # TODO: Convert information into XYZ coordinates in some meaningful way and publish to topic "ars430/points". This needs to be clarified more in to how we use stuff like probability, variance, elevation, radial distance, velocity, etc"
 
 # Global variable corresponding to a publisher for this node
 arsPublisher = None
+rvizPublisher = None
 
 # Callback function for the subscriber
 def callback(data):
-    # Declare that we are using the global arsPublisher object
+    # Declare that we are using the global publisher objects
     global arsPublisher
+    global rvizPublisher
 
     # Tell people we heard a UDP message!
     # rospy.loginfo(rospy.get_caller_id() + "I heard a message from %s", str(data.ip))
@@ -365,17 +399,20 @@ def callback(data):
     if (arsPublisher.get_ip() == data.ip):
         packet, type = arsPublisher.Unpack(data.data)
         arsPublisher.publishNow(packet,type)
-
-    # TODO: Do stuff with the packet
-    # TODO: Convert the range and azimuth of the packet into xyz coordinates and send to Rviz IF it is an event packet and has detections
+        collected, jointPacket = arsPublisher.collect(packet,type)
+        # TODO: Convert every element of the packet into XYZ and emit to rviz
+        # if collected:
 
 def listener():
     rospy.init_node('ars430', anonymous=True)
 
     # Initialize a publisher and make it available to the callback function
     global arsPublisher # modify the global variable
+    global rvizPublisher # modify the global rviz variable
 
     arsPublisher = ARS430Publisher('192.168.1.2', 'ars430/status', 'ars430/event')
+
+    rvizPublisher = rospy.Publisher('visualization_marker', Marker, queue_size = 5)
 
     # Listen for UDPMsg types and call the callback function
     rospy.Subscriber('rosudp/31122', UDPMsg, callback)
