@@ -179,15 +179,25 @@ class ARS430Publisher:
             detection.ElevationAngle = f_ElAng/65534.0 * (2*math.pi)        # rad
             detection.RadarCrossSection0 = f_RCS0/65534.0 * 200             # dBm^2
             detection.RadarCrossSection1 = f_RCS1/65534.0 * 200             # dBm^2
-            detection.ProbabilityAz0 = f_Prob0/254.0                         # (unitless)
-            detection.ProbabilityAz1 = f_Prob1/254.0                         # (unitless)
+            detection.ProbabilityAz0 = f_Prob0/254.0                        # (unitless)
+            detection.ProbabilityAz1 = f_Prob1/254.0                        # (unitless)
             detection.RangeVariance = f_RangeVar/65534.0 * 10               # m^2
             detection.RadialVelocityVariance = f_VrelRadVar/65534.0 * 10    # (m/s)^2
             detection.Az0Variance = f_AzAngVar0/65534.0                     # rad^2
             detection.Az1Variance = f_AzAngVar1/65534.0                     # rad^2
-            detection.ElAngleVariance = f_ElAngVar/65534.0                    # rad^2
-            # TODO: PdH0 is a bitstream of flags, not an actual probability value. Split it into those bits and set flags accordingly.
-            detection.ProbabilityFalseDetection = f_Pdh0/254.0               # (unitless)
+            detection.ElAngleVariance = f_ElAngVar/65534.0                  # rad^2
+            # PdH0 is a bitstream of flags, not an actual probability value. Split it into those bits and set flags accordingly.
+            # We also map Pdh0 to a "probability", so that if it is above some threshold we
+            # can check these flags to find out which ones apply
+            detection.ProbabilityFalseDetection   = f_Pdh0/254.0            # (unitless)
+            detection.FalseDetectionNear          = (f_Pdh0 & 0b0000001)>0  # boolean
+            detection.FalseDetectionFromInference = (f_Pdh0 & 0b0000010)>0  # boolean
+            detection.FalseDetectionFromSidelobe  = (f_Pdh0 & 0b0000100)>0  # boolean
+            detection.BiasCorrectionInaccurate    = (f_Pdh0 & 0b0001000)>0  # boolean
+            detection.ClusterNotLocalMax          = (f_Pdh0 & 0b0010000)>0  # boolean
+            detection.BeamFormerMonopulseDiffer1  = (f_Pdh0 & 0b0100000)>0  # boolean
+            detection.BeamFormerMonopulseDiffer2  = (f_Pdh0 & 0b1000000)>0  # boolean
+            # SNR = Signal-to-noise ratio
             detection.SNR = (f_SNR + 110.0)/10.0               # dBr
             # Add this RadarDetection message to the ARS430Event message
             packet.DetectionList.append(detection)
