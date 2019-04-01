@@ -6,6 +6,7 @@
 import rospy
 import roslib; roslib.load_manifest('ars430')
 from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point
 from std_msgs.msg import String
 from rosudp.msg import UDPMsg
 from ars430.msg import ARS430Event
@@ -254,11 +255,13 @@ class ARS430Publisher:
             return event
 
     # Determine if a header is of status type
-    def __isStatus(self, packet):
+    @staticmethod
+    def IsStatus(packet):
         return packet.EventType == ARS430Publisher.Headers.STATUS.value
 
     # determine if a header is of near type
-    def __isNear(self, packet):
+    @staticmethod
+    def IsNear( packet):
         if packet.EventType == ARS430Publisher.Headers.NEAR0.value or \
            packet.EventType == ARS430Publisher.Headers.NEAR1.value or \
            packet.EventType == ARS430Publisher.Headers.NEAR2.value:
@@ -266,7 +269,8 @@ class ARS430Publisher:
         return False
 
     # Determine if a header is of far type
-    def __isFar(self, packet):
+    @staticmethod
+    def IsFar( packet):
         if packet.EventType == ARS430Publisher.Headers.FAR0.value or \
            packet.EventType == ARS430Publisher.Headers.FAR1.value:
             return True
@@ -279,7 +283,7 @@ class ARS430Publisher:
         packet.sourceIP = self.get_ip()
 
         # Publish it to the relevant topics
-        if self.__isStatus(packet):
+        if ARS430Publisher.IsStatus(packet):
             self.statuses.publish(packet)
         # Only publish an event packet if it had any detections in it
         elif packet.DetInPack > 0:
@@ -324,7 +328,7 @@ class ARS430Publisher:
     # * packets = the new combined packet containing all detections for this timestamp (or a status packet)
     def collect(self, packet):
         # status messages are returned immediately
-        if self.__isStatus(packet):
+        if ARS430Publisher.IsStatus(packet):
             return (False, packet)
 
         # don't do anything if there were no detections in this packet. We don't care.
@@ -333,7 +337,7 @@ class ARS430Publisher:
 
         # Save the package to the relevant list of packages.
         packetList = []
-        if self.__isNear(packet):
+        if ARS430Publisher.IsNear(packet):
             packetList = self.__storeEvent(packet, self.nearPackets)
         else:
             packetList = self.__storeEvent(packet, self.farPackets)
@@ -380,16 +384,56 @@ def callback(data):
 
     # Tell people we heard a UDP message!
     # rospy.loginfo(rospy.get_caller_id() + "I heard a message from %s", str(data.ip))
-
     # Only publish data if it comes from a desired IP address
     if (arsPublisher.get_ip() == data.ip):
         packet = arsPublisher.Unpack(data.data)
         arsPublisher.publishNow(packet)
         collected, jointPacket = arsPublisher.collect(packet)
-        # TODO: Convert every element of the packet into XYZ marker and emit to rviz
-        # if collected:
-        #    for detection in jointPacket.DetectionList:
-        #        convertDetection to XYZ here
+        # Convert every element of the packet into XYZ marker and emit to rviz
+        if collected:
+            # Create a POINTS marker object with the correct header, frame name, id, etc
+            marker = Marker()
+            marker.header.frame_id = "/map";
+            marker.header.stamp = rospy.Time.now();
+            marker.ns = "ars430_points"
+            marker.type = Marker.POINTS
+            marker.lifetime = rospy.Duration()
+            if ARS430Publisher.IsNear(jointPacket):
+                marker.color.r = 0.0;
+                marker.color.g = 1.0;
+                marker.color.b = 0.0;
+                marker.color.a = 1.0;
+                marker.id = 0
+            elif ARS430Publisher.IsFar(jointPacket):
+                marker.color.r = 0.0;
+                marker.color.g = 0.0;
+                marker.color.b = 1.0;
+                marker.color.a = 1.0;
+                marker.id = 1
+            else:
+                return
+                    
+
+            #for detection in jointPacket.DetectionList:
+                # TODO: Add a point to the POINTS marker, in XYZ coordinates
+                # This requires converting the points to XYZ 
+
+#            marker.points.append(Point(0, 1, 0))
+#            marker.points.append(Point(1,0,1))
+#            marker.action = Marker.ADD
+#            marker.pose.position.x = 0;
+#            marker.pose.position.y = 0;
+#            marker.pose.position.z = 0;
+#            marker.pose.orientation.x = 0.0;
+#            marker.pose.orientation.y = 0.0;
+#            marker.pose.orientation.z = 0.0;
+#            marker.pose.orientation.w = 1.0;
+#            marker.scale.x = 1.0;
+#            marker.scale.y = 1.0;
+#            marker.scale.z = 1.0;
+
+            # Publish the POINTS marker to rvizPublisher
+            rvizPublisher.publish(marker)
 
 def listener():
     rospy.init_node('ars430', anonymous=True)
