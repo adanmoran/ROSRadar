@@ -50,7 +50,7 @@ def publish_from(sock):
     # TODO: Change the publisher topic to contain the IP address or port
     # TODO: Determine if a queue-size of 10 is correct, or if we need more
     pub = rospy.Publisher('rosudp/' + str(MCAST_PORT), UDPMsg, queue_size = 10)
-    rospy.init_node('udpnode', anonymous = True)
+
     # TODO: Determine what the rate is of the device and take that as an input
     rate = rospy.Rate(50) #Hz
 
@@ -88,7 +88,22 @@ def publish_from(sock):
 if __name__ == '__main__':
     # TODO: Initialize rospy node first so we can publish to the loginfo logerr
     # from InitializeUDP
-    sock = init_udp_connection('192.168.1.30', MCAST_PORT, MCAST_GRP, True)
+    rospy.init_node('udpnode', anonymous = True)
+    DEBUG=rospy.get_param('~debug', False)
+    # Multicast ip, which is emmitted by UDP device
+    MCAST_GRP = rospy.get_param('~mcast_grp', '225.0.0.1')
+    # Multicast port on which to receive UDP messages
+    MCAST_PORT = int(rospy.get_param('~mcast_port', 31122))
+    IP = ''
+    if not rospy.has_param('~ip'):
+        rospy.logerr("IP value not set")
+        exit()
+    else: 
+        IP = rospy.get_param('~ip')
+        
+    rospy.loginfo('Initializing UDP at %s, on port %s, MCAST_GRP of %s, and the debug param is %s' % (IP,MCAST_PORT,MCAST_GRP,str(DEBUG)))
+
+    sock = init_udp_connection(IP, MCAST_PORT, MCAST_GRP, True)
     try:
         publish_from(sock)
     except rospy.ROSInterruptException:

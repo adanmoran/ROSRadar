@@ -1,0 +1,12 @@
+<launch>
+
+  <node pkg="rosudp" name="testudp" type="publish_udp.py" output="screen">
+    <rosparam>
+      debug: False
+      mcast_grp: '255.0.0.1'
+      mcast_port: 31122
+      ip: '192.168.1.30'
+     </rosparam>
+  </node>
+
+</launch>
