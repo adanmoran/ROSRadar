@@ -13,4 +13,11 @@ float32 Az0Variance
 float32 Az1Variance
 float32 ElAngleVariance
 float32 ProbabilityFalseDetection
+bool FalseDetectionNear
+bool FalseDetectionFromInference
+bool FalseDetectionFromSidelobe
+bool BiasCorrectionInaccurate
+bool ClusterNotLocalMax
+bool BeamFormerMonopulseDiffer1
+bool BeamFormerMonopulseDiffer2
 float32 SNR

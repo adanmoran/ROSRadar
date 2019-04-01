@@ -179,15 +179,25 @@ class ARS430Publisher:
             detection.ElevationAngle = f_ElAng/65534.0 * (2*math.pi)        # rad
             detection.RadarCrossSection0 = f_RCS0/65534.0 * 200             # dBm^2
             detection.RadarCrossSection1 = f_RCS1/65534.0 * 200             # dBm^2
-            detection.ProbabilityAz0 = f_Prob0/254.0                         # (unitless)
-            detection.ProbabilityAz1 = f_Prob1/254.0                         # (unitless)
+            detection.ProbabilityAz0 = f_Prob0/254.0                        # (unitless)
+            detection.ProbabilityAz1 = f_Prob1/254.0                        # (unitless)
             detection.RangeVariance = f_RangeVar/65534.0 * 10               # m^2
             detection.RadialVelocityVariance = f_VrelRadVar/65534.0 * 10    # (m/s)^2
             detection.Az0Variance = f_AzAngVar0/65534.0                     # rad^2
             detection.Az1Variance = f_AzAngVar1/65534.0                     # rad^2
-            detection.ElAngleVariance = f_ElAngVar/65534.0                    # rad^2
-            # TODO: PdH0 is a bitstream of flags, not an actual probability value. Split it into those bits and set flags accordingly.
-            detection.ProbabilityFalseDetection = f_Pdh0/254.0               # (unitless)
+            detection.ElAngleVariance = f_ElAngVar/65534.0                  # rad^2
+            # PdH0 is a bitstream of flags, not an actual probability value. Split it into those bits and set flags accordingly.
+            # We also map Pdh0 to a "probability", so that if it is above some threshold we
+            # can check these flags to find out which ones apply
+            detection.ProbabilityFalseDetection   = f_Pdh0/254.0            # (unitless)
+            detection.FalseDetectionNear          = (f_Pdh0 & 0b0000001)>0  # boolean
+            detection.FalseDetectionFromInference = (f_Pdh0 & 0b0000010)>0  # boolean
+            detection.FalseDetectionFromSidelobe  = (f_Pdh0 & 0b0000100)>0  # boolean
+            detection.BiasCorrectionInaccurate    = (f_Pdh0 & 0b0001000)>0  # boolean
+            detection.ClusterNotLocalMax          = (f_Pdh0 & 0b0010000)>0  # boolean
+            detection.BeamFormerMonopulseDiffer1  = (f_Pdh0 & 0b0100000)>0  # boolean
+            detection.BeamFormerMonopulseDiffer2  = (f_Pdh0 & 0b1000000)>0  # boolean
+            # SNR = Signal-to-noise ratio
             detection.SNR = (f_SNR + 110.0)/10.0               # dBr
             # Add this RadarDetection message to the ARS430Event message
             packet.DetectionList.append(detection)
@@ -393,46 +403,66 @@ def callback(data):
         if collected:
             # Create a POINTS marker object with the correct header, frame name, id, etc
             marker = Marker()
+            # frame_id is /map since that is the RVIZ default. Could be changed later.
             marker.header.frame_id = "/map";
             marker.header.stamp = rospy.Time.now();
             marker.ns = "ars430_points"
+            # Create a list of points, so that RVIZ can batch display.
+            # Alternatively, this could be a SPHERE_LIST
             marker.type = Marker.POINTS
+            # rospy.Duration() means the points never get erased automatically
             marker.lifetime = rospy.Duration()
+            marker.action = Marker.ADD
+            # The base of the radar is assumed to be at (0,0,0), facing the x direction
+            marker.pose.position.x = 0;
+            marker.pose.position.y = 0;
+            marker.pose.position.z = 0;
+            # No rotation on the radar
+            marker.pose.orientation.x = 0.0;
+            marker.pose.orientation.y = 0.0;
+            marker.pose.orientation.z = 0.0;
+            marker.pose.orientation.w = 1.0;
+            # Scale of the points, in meters. TODO: determine the physical significance of this.
+            marker.scale.x = 0.1;
+            marker.scale.y = 0.1;
+            marker.scale.z = 0.1;
+
+            # Distinguish NEAR and FAR points by colour.
             if ARS430Publisher.IsNear(jointPacket):
                 marker.color.r = 0.0;
                 marker.color.g = 1.0;
                 marker.color.b = 0.0;
                 marker.color.a = 1.0;
+                # The NEAR ID - TODO: set this as a global variable
                 marker.id = 0
             elif ARS430Publisher.IsFar(jointPacket):
                 marker.color.r = 0.0;
                 marker.color.g = 0.0;
                 marker.color.b = 1.0;
                 marker.color.a = 1.0;
+                # The FAR ID - TODO: set this as a global variable
                 marker.id = 1
             else:
                 return
                     
+            # Add all the points to the POINTS marker, in XYZ coordinates
+            for detection in jointPacket.DetectionList:
+                # Compute the angle with maximal probability
+		AzAng = 0;
+               	if detection.ProbabilityAz0 >= detection.ProbabilityAz1:
+               	    AzAng=detection.AzimuthalAngle0;
+ 		elif detection.ProbabilityAz1 > detection.ProbabilityAz0:
+                    AzAng=detection.AzimuthalAngle1;
 
-            #for detection in jointPacket.DetectionList:
-                # TODO: Add a point to the POINTS marker, in XYZ coordinates
-                # This requires converting the points to XYZ 
-
-#            marker.points.append(Point(0, 1, 0))
-#            marker.points.append(Point(1,0,1))
-#            marker.action = Marker.ADD
-#            marker.pose.position.x = 0;
-#            marker.pose.position.y = 0;
-#            marker.pose.position.z = 0;
-#            marker.pose.orientation.x = 0.0;
-#            marker.pose.orientation.y = 0.0;
-#            marker.pose.orientation.z = 0.0;
-#            marker.pose.orientation.w = 1.0;
-#            marker.scale.x = 1.0;
-#            marker.scale.y = 1.0;
-#            marker.scale.z = 1.0;
-
-            # Publish the POINTS marker to rvizPublisher
+                # Convert the detection to XYZ coordinates
+	        f_X = detection.Range;
+                f_Y = math.tan(AzAng)*detection.Range;
+                # The detection's elevation is not considered for now. 
+                # Eventually we will add using the elevation angle and Range.
+                f_Z = 0; 
+                # Add this point to the marker
+                marker.points.append(Point(f_X, f_Y, f_Z))
+            # Publish the POINTS marker to rvizPublisher, to batch display these points
             rvizPublisher.publish(marker)
 
 def listener():
@@ -442,6 +472,7 @@ def listener():
     global arsPublisher # modify the global variable
     global rvizPublisher # modify the global rviz variable
 
+    # TODO: Take the IP as a param input
     arsPublisher = ARS430Publisher('192.168.1.2', 'ars430/status', 'ars430/event')
 
     rvizPublisher = rospy.Publisher('visualization_marker', Marker, queue_size = 5)
