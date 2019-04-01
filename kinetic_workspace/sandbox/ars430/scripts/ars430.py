@@ -398,6 +398,18 @@ def callback(data):
             marker.ns = "ars430_points"
             marker.type = Marker.POINTS
             marker.lifetime = rospy.Duration()
+            marker.action = Marker.ADD
+            marker.pose.position.x = 0;
+            marker.pose.position.y = 0;
+            marker.pose.position.z = 0;
+            marker.pose.orientation.x = 0.0;
+            marker.pose.orientation.y = 0.0;
+            marker.pose.orientation.z = 0.0;
+            marker.pose.orientation.w = 1.0;
+            marker.scale.x = 0.1;
+            marker.scale.y = 0.1;
+            marker.scale.z = 0.1;
+
             if ARS430Publisher.IsNear(jointPacket):
                 marker.color.r = 0.0;
                 marker.color.g = 1.0;
@@ -414,23 +426,28 @@ def callback(data):
                 return
                     
 
-            #for detection in jointPacket.DetectionList:
+            for detection in jointPacket.DetectionList:
+               
+		AzAng = 0;
+               	if detection.ProbabilityAz0 >= detection.ProbabilityAz1:
+               	 AzAng=detection.AzimuthalAngle0;
+               
+
+ 		elif detection.ProbabilityAz1 > detection.ProbabilityAz0:
+                  AzAng=detection.AzimuthalAngle1;
+               
+	        f_X = detection.Range;
+                f_Y = math.tan(AzAng)*detection.Range;
+                f_Z = 0; #the detection's elevation is not considered for now. Eventually we will add using the elevation angle and Range.
+
+                marker.points.append(Point(f_X, f_Y, f_Z))
+              
+
                 # TODO: Add a point to the POINTS marker, in XYZ coordinates
                 # This requires converting the points to XYZ 
 
 #            marker.points.append(Point(0, 1, 0))
 #            marker.points.append(Point(1,0,1))
-#            marker.action = Marker.ADD
-#            marker.pose.position.x = 0;
-#            marker.pose.position.y = 0;
-#            marker.pose.position.z = 0;
-#            marker.pose.orientation.x = 0.0;
-#            marker.pose.orientation.y = 0.0;
-#            marker.pose.orientation.z = 0.0;
-#            marker.pose.orientation.w = 1.0;
-#            marker.scale.x = 1.0;
-#            marker.scale.y = 1.0;
-#            marker.scale.z = 1.0;
 
             # Publish the POINTS marker to rvizPublisher
             rvizPublisher.publish(marker)
