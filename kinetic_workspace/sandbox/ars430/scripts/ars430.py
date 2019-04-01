@@ -403,63 +403,66 @@ def callback(data):
         if collected:
             # Create a POINTS marker object with the correct header, frame name, id, etc
             marker = Marker()
+            # frame_id is /map since that is the RVIZ default. Could be changed later.
             marker.header.frame_id = "/map";
             marker.header.stamp = rospy.Time.now();
             marker.ns = "ars430_points"
+            # Create a list of points, so that RVIZ can batch display.
+            # Alternatively, this could be a SPHERE_LIST
             marker.type = Marker.POINTS
+            # rospy.Duration() means the points never get erased automatically
             marker.lifetime = rospy.Duration()
             marker.action = Marker.ADD
+            # The base of the radar is assumed to be at (0,0,0), facing the x direction
             marker.pose.position.x = 0;
             marker.pose.position.y = 0;
             marker.pose.position.z = 0;
+            # No rotation on the radar
             marker.pose.orientation.x = 0.0;
             marker.pose.orientation.y = 0.0;
             marker.pose.orientation.z = 0.0;
             marker.pose.orientation.w = 1.0;
+            # Scale of the points, in meters. TODO: determine the physical significance of this.
             marker.scale.x = 0.1;
             marker.scale.y = 0.1;
             marker.scale.z = 0.1;
 
+            # Distinguish NEAR and FAR points by colour.
             if ARS430Publisher.IsNear(jointPacket):
                 marker.color.r = 0.0;
                 marker.color.g = 1.0;
                 marker.color.b = 0.0;
                 marker.color.a = 1.0;
+                # The NEAR ID - TODO: set this as a global variable
                 marker.id = 0
             elif ARS430Publisher.IsFar(jointPacket):
                 marker.color.r = 0.0;
                 marker.color.g = 0.0;
                 marker.color.b = 1.0;
                 marker.color.a = 1.0;
+                # The FAR ID - TODO: set this as a global variable
                 marker.id = 1
             else:
                 return
                     
-
+            # Add all the points to the POINTS marker, in XYZ coordinates
             for detection in jointPacket.DetectionList:
-               
+                # Compute the angle with maximal probability
 		AzAng = 0;
                	if detection.ProbabilityAz0 >= detection.ProbabilityAz1:
-               	 AzAng=detection.AzimuthalAngle0;
-               
-
+               	    AzAng=detection.AzimuthalAngle0;
  		elif detection.ProbabilityAz1 > detection.ProbabilityAz0:
-                  AzAng=detection.AzimuthalAngle1;
-               
+                    AzAng=detection.AzimuthalAngle1;
+
+                # Convert the detection to XYZ coordinates
 	        f_X = detection.Range;
                 f_Y = math.tan(AzAng)*detection.Range;
-                f_Z = 0; #the detection's elevation is not considered for now. Eventually we will add using the elevation angle and Range.
-
+                # The detection's elevation is not considered for now. 
+                # Eventually we will add using the elevation angle and Range.
+                f_Z = 0; 
+                # Add this point to the marker
                 marker.points.append(Point(f_X, f_Y, f_Z))
-              
-
-                # TODO: Add a point to the POINTS marker, in XYZ coordinates
-                # This requires converting the points to XYZ 
-
-#            marker.points.append(Point(0, 1, 0))
-#            marker.points.append(Point(1,0,1))
-
-            # Publish the POINTS marker to rvizPublisher
+            # Publish the POINTS marker to rvizPublisher, to batch display these points
             rvizPublisher.publish(marker)
 
 def listener():
@@ -469,6 +472,7 @@ def listener():
     global arsPublisher # modify the global variable
     global rvizPublisher # modify the global rviz variable
 
+    # TODO: Take the IP as a param input
     arsPublisher = ARS430Publisher('192.168.1.2', 'ars430/status', 'ars430/event')
 
     rvizPublisher = rospy.Publisher('visualization_marker', Marker, queue_size = 5)
