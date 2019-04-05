@@ -409,7 +409,7 @@ def callback(data):
             marker.ns = "ars430_points"
             # Create a list of points, so that RVIZ can batch display.
             # Alternatively, this could be a SPHERE_LIST
-            marker.type = Marker.POINTS
+            marker.type = Marker.SPHERE_LIST
             # rospy.Duration() means the points never get erased automatically
             marker.lifetime = rospy.Duration()
             marker.action = Marker.ADD
@@ -423,22 +423,23 @@ def callback(data):
             marker.pose.orientation.z = 0.0;
             marker.pose.orientation.w = 1.0;
             # Scale of the points, in meters. TODO: determine the physical significance of this.
-            marker.scale.x = 0.1;
-            marker.scale.y = 0.1;
-            marker.scale.z = 0.1;
+            marker.scale.x = 0.5;
+            marker.scale.y = 0.5;
+            marker.scale.z = 0.5;
 
             # Distinguish NEAR and FAR points by colour.
-            if ARS430Publisher.IsNear(jointPacket):
-                marker.color.r = 0.0;
+            if ARS430Publisher.IsNear(jointPacket): 
+                # NEAR points are yellow
+                marker.color.r = 1.0;
                 marker.color.g = 1.0;
                 marker.color.b = 0.0;
                 marker.color.a = 1.0;
                 # The NEAR ID - TODO: set this as a global variable
                 marker.id = 0
             elif ARS430Publisher.IsFar(jointPacket):
-                marker.color.r = 0.0;
+                marker.color.r = 1.0;
                 marker.color.g = 0.0;
-                marker.color.b = 1.0;
+                marker.color.b = 0.0;
                 marker.color.a = 1.0;
                 # The FAR ID - TODO: set this as a global variable
                 marker.id = 1
