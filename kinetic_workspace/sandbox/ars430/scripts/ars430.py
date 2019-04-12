@@ -411,7 +411,7 @@ def callback(data):
             # Alternatively, this could be a SPHERE_LIST
             marker.type = Marker.SPHERE_LIST
             # rospy.Duration() means the points never get erased automatically
-            marker.lifetime = rospy.Duration()
+            marker.lifetime = rospy.Duration(1) # 2 seconds max duration. rospy.Duration() will make it infinite.
             marker.action = Marker.ADD
             # The base of the radar is assumed to be at (0,0,0), facing the x direction
             marker.pose.position.x = 0;
@@ -457,12 +457,18 @@ def callback(data):
 
                 # Convert the detection to XYZ coordinates
 	        f_X = detection.Range;
-                f_Y = math.tan(AzAng)*detection.Range;
+		# The y-axis is to the right of the radar, where our model has it to the left.
+		# Thus, we invert the y direction.
+                f_Y = -math.tan(AzAng)*detection.Range;
+		# For now, if the probability of false detection is greater than 0,
+		# we do not display the point.
+		
                 # The detection's elevation is not considered for now. 
                 # Eventually we will add using the elevation angle and Range.
-                f_Z = 0; 
                 # Add this point to the marker
-                marker.points.append(Point(f_X, f_Y, f_Z))
+                f_Z = 0; 
+		if detection.ProbabilityFalseDetection == 0:
+			marker.points.append(Point(f_X, f_Y, f_Z))
             # Publish the POINTS marker to rvizPublisher, to batch display these points
             rvizPublisher.publish(marker)
 
