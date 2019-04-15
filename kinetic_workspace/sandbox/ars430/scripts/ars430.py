@@ -391,6 +391,7 @@ def callback(data):
     # Declare that we are using the global publisher objects
     global arsPublisher
     global rvizPublisher
+    global time
 
     # Tell people we heard a UDP message!
     # rospy.loginfo(rospy.get_caller_id() + "I heard a message from %s", str(data.ip))
@@ -456,10 +457,10 @@ def callback(data):
                     AzAng=detection.AzimuthalAngle1;
 
                 # Convert the detection to XYZ coordinates
-	        f_X = detection.Range;
+	        f_X = math.cos(AzAng)*detection.Range;
 		# The y-axis is to the right of the radar, where our model has it to the left.
 		# Thus, we invert the y direction.
-                f_Y = -math.tan(AzAng)*detection.Range;
+                f_Y = -math.sin(AzAng)*detection.Range;
 		# For now, if the probability of false detection is greater than 0,
 		# we do not display the point.
 		
@@ -467,8 +468,9 @@ def callback(data):
                 # Eventually we will add using the elevation angle and Range.
                 # Add this point to the marker
                 f_Z = 0; 
-		if detection.ProbabilityFalseDetection == 0:
+		if detection.ProbabilityFalseDetection == 0 and detection.Range < 20:
 			marker.points.append(Point(f_X, f_Y, f_Z))
+
             # Publish the POINTS marker to rvizPublisher, to batch display these points
             rvizPublisher.publish(marker)
 
