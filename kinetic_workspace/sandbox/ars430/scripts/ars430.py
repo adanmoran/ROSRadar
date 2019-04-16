@@ -391,7 +391,6 @@ def callback(data):
     # Declare that we are using the global publisher objects
     global arsPublisher
     global rvizPublisher
-    global time
 
     # Tell people we heard a UDP message!
     # rospy.loginfo(rospy.get_caller_id() + "I heard a message from %s", str(data.ip))
@@ -423,7 +422,8 @@ def callback(data):
             marker.pose.orientation.y = 0.0;
             marker.pose.orientation.z = 0.0;
             marker.pose.orientation.w = 1.0;
-            # Scale of the points, in meters. TODO: determine the physical significance of this.
+            # Scale of the points, in meters. The radar has a resolution of 0.55m, so we make
+            # our points 0.5m wide to have a bit of a buffer.
             marker.scale.x = 0.5;
             marker.scale.y = 0.5;
             marker.scale.z = 0.5;
@@ -468,7 +468,11 @@ def callback(data):
                 # Eventually we will add using the elevation angle and Range.
                 # Add this point to the marker
                 f_Z = 0; 
-		if detection.ProbabilityFalseDetection == 0 and detection.Range < 20:
+                # TODO: Don't perform this filtering or learn to do this in ROS
+                # For now only display points that are nearby and are not erroneous
+		if detection.ProbabilityFalseDetection == 0 and detection.Range < 30 and marker.id == 0:
+                    # For now, only display points which have nonzero range rate
+                    if detection.RelativeRadialVelocity > 1:
 			marker.points.append(Point(f_X, f_Y, f_Z))
 
             # Publish the POINTS marker to rvizPublisher, to batch display these points
