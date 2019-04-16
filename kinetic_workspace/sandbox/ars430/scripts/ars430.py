@@ -471,9 +471,7 @@ def callback(data):
                 # TODO: Don't perform this filtering or learn to do this in ROS
                 # For now only display points that are nearby and are not erroneous
 		if detection.ProbabilityFalseDetection == 0 and detection.Range < 30 and marker.id == 0:
-                    # For now, only display points which have nonzero range rate
-                    if detection.RelativeRadialVelocity > 1:
-			marker.points.append(Point(f_X, f_Y, f_Z))
+                    marker.points.append(Point(f_X, f_Y, f_Z))
 
             # Publish the POINTS marker to rvizPublisher, to batch display these points
             rvizPublisher.publish(marker)
