@@ -86,9 +86,9 @@ def publish_from(sock):
 
 # Main functionality
 if __name__ == '__main__':
-    # TODO: Initialize rospy node first so we can publish to the loginfo logerr
-    # from InitializeUDP
+    # Initialize rospy node first so we can publish to the loginfo or logerr
     rospy.init_node('udpnode', anonymous = True)
+    # TODO: Load parameters from a roslaunch file or something similar
 #    DEBUG=rospy.get_param('~debug', False)
 #    # Multicast ip, which is emmitted by UDP device
 #    MCAST_GRP = rospy.get_param('~mcast_grp', '225.0.0.1')
