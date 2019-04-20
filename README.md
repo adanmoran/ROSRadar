@@ -26,6 +26,10 @@ Assuming you downloaded this to your home folder, you should run the following c
 2. `echo $ROS_PACKAGE_PATH`
 3. Confirm you get something like "/home/username/ROSRadar/kinetic_workspace/sandbox:/opt/ros/kinetic/share"
 
+This repository assumes you have an ARS430 radar with IP address `192.168.1.*` which emits to port `31122`. You will need to set your ethernet card to have the fixed IP address `192.168.1.30` with netmask `255.255.255.0` for rosudp to work. 
+
+If your radar's IP or port is different than that above, please set your ethernet's fixed IP to match the first 3 segments of the radar's IP, then edit the file `kinetic_workspace/sandbox/rosudp/scripts/publish_upd.py` to match your ethernet's new IP address.
+
 Usage
 =====
 After setting up with ROS, you can run the following.
