@@ -59,3 +59,8 @@ It should also improve noise error if there is an overlap region, but you'll hav
 radar waves interfering with each other.
 * Object tracking by using relative velocities and prediction techniques
 
+Acknowledgements
+================
+Credit goes to Adan Moran-MacDonald, Navid Kayhani, Nandhini Sayee, and Vipin Karthikeyan for creating this software package.
+
+Thanks to Prof. Tim Barfoot and Keenan Burnett for their advice as the project evolved.
