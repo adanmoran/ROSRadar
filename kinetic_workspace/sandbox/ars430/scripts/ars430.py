@@ -380,8 +380,6 @@ class ARS430Publisher:
 
         return (True, combinedPacket)
 
-# TODO: Convert information into XYZ coordinates in some meaningful way and publish to topic "ars430/points". This needs to be clarified more in to how we use stuff like probability, variance, elevation, radial distance, velocity, etc"
-
 # Global variable corresponding to a publisher for this node
 arsPublisher = None
 rvizPublisher = None
@@ -435,14 +433,14 @@ def callback(data):
                 marker.color.g = 1.0;
                 marker.color.b = 0.0;
                 marker.color.a = 1.0;
-                # The NEAR ID - TODO: set this as a global variable
+                # The NEAR ID 
                 marker.id = 0
             elif ARS430Publisher.IsFar(jointPacket):
                 marker.color.r = 1.0;
                 marker.color.g = 0.0;
                 marker.color.b = 0.0;
                 marker.color.a = 1.0;
-                # The FAR ID - TODO: set this as a global variable
+                # The FAR ID 
                 marker.id = 1
             else:
                 return
@@ -468,9 +466,9 @@ def callback(data):
                 # Eventually we will add using the elevation angle and Range.
                 # Add this point to the marker
                 f_Z = 0; 
-                # TODO: Don't perform this filtering or learn to do this in ROS
-                # For now only display points that are nearby and are not erroneous
-		if detection.ProbabilityFalseDetection == 0 and detection.Range < 30 and marker.id == 0:
+                # For now only display points that are not erroneous
+                # TODO: Filter using other parameters from the RDI
+                if detection.ProbabilityFalseDetection == 0: 
                     marker.points.append(Point(f_X, f_Y, f_Z))
 
             # Publish the POINTS marker to rvizPublisher, to batch display these points
@@ -486,6 +484,7 @@ def listener():
     # TODO: Take the IP as a param input
     arsPublisher = ARS430Publisher('192.168.1.2', 'ars430/status', 'ars430/event')
 
+    # Publisher for displaying XYZ points in visualization tools
     rvizPublisher = rospy.Publisher('visualization_marker', Marker, queue_size = 5)
 
     # Listen for UDPMsg types and call the callback function
