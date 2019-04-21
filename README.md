@@ -65,6 +65,7 @@ It should also improve noise error if there is an overlap region, but you'll hav
 radar waves interfering with each other.
 * Object tracking by using relative velocities and prediction techniques
 * Take IP address / port / anything else required as a command-line input (either through rosparam or otherwise, see TODO notes in publish_udp.py and ars430.py). This will enable connection to multiple UDP ports and to multiple ARS430 radars.
+* Create a roslaunch file, which will start the single rosudp node on port 31122 and as many ARS430 nodes as you want. We tried this already and had errors with rosudp when switching between computers, so please ensure this works on multiple hosts and with a real ARS430.
 
 Acknowledgements
 ================
