@@ -1,5 +1,5 @@
 # ars430-ros-driver
-ROS Driver for the ARS430 Radar. Developed for the AUToronto SAE Team as part of AER1514 (University of Toronto).
+ROS Driver for the ARS430 Radar. Developed for the AUToronto SAE Team as part of AER1514 (University of Toronto). Implements version 0.1.2 of Continental Automotive's ethernet interface.
 
 Summary
 =======
