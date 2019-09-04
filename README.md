@@ -34,7 +34,11 @@ The ars430 node, on the other hand, assumes the radar IP is `192.168.1.2`. Pleas
 
 Usage
 =====
-After setting up with ROS, you can run the following.
+After setting up with ROS, you must build the software with 
+```sh
+rosmake ars430
+```
+Then you can run the following.
 ```sh
 roscore &
 rosrun rosudp publish_udp.py &
