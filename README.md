@@ -53,8 +53,7 @@ on the screen.
 
 Whitepaper
 ==========
-DRIVER DOCUMENTATION AND INITIAL CHARACTERIZATION OF THE ARS430 COMING SOON
-Expected delivery is summer 2019. Contact me for an informal paper in the meantime.
+Contact me for an informal report on our initial analysis of the ARS430's capabilities when using this driver.
 
 Improvements
 ============
